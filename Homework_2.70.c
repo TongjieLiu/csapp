@@ -28,7 +28,7 @@ int fits_bits(int x, int n)
 	   2}, x_{n - 3}, ... , x_0]. It can be expanded to a w-bits words of int
 	   type and can be represented as bit vector b = [s, s, ... , s, x_{n - 2},
 	   x_{n - 3}, ... , x_0].
-	   	Here, t and b have the same numerical value. B will not be equal to
+	   	Here, t and b have the same numeric value. B will not be equal to
 	   x, if x can not be fitted into n bits. */
 	int w = sizeof(int) << 3;
 	int n_rest_bits = w - n;
