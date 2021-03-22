@@ -30,7 +30,7 @@ int fits_bits(int x, int n)
 	   x_{n - 3}, ... , x_0].
 	   	Here, t and b have the same numerical value. B will not be equal to
 	   x, if x can not be fitted into n bits. */
-	int w = sizeof(int) * 8;
+	int w = sizeof(int) << 3;
 	int n_rest_bits = w - n;
 
 	int t, b;

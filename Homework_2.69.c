@@ -21,7 +21,7 @@
 
 unsigned int rotate_left(unsigned int x, int n)
 {
-	int uint_bit_size = sizeof(unsigned int) * 8;
+	int uint_bit_size = sizeof(unsigned int) << 3;
 	int n_rest_bits = uint_bit_size - n;
 
 	unsigned int mask = ((1 << n) - 1) << n_rest_bits; // mask = 1111000...000

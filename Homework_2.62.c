@@ -22,7 +22,7 @@
 int int_shifts_are_arithmetic()
 {
 	int ivar = 1;
-	int shift_bit_num = sizeof(int) * 8 - 1;
+	int shift_bit_num = (sizeof(int) << 3) - 1;
 
 	// after this, the most significant bit will be 1 and the rest 0
 	ivar = ivar << shift_bit_num;

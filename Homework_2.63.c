@@ -23,7 +23,7 @@ unsigned int srl(unsigned int x, int k)
 {
 	unsigned int xsra = (int)x >> k; // perform shift arithmetically
 
-	int rest_bit_num = sizeof(unsigned int) * 8 - k;
+	int rest_bit_num = (sizeof(unsigned int) << 3) - k;
 	int mask = (1 << rest_bit_num) - 1;
 
 	return xsra & mask;
@@ -35,7 +35,7 @@ int sra(int x, int k)
 {
 	int xsrl = (unsigned int)x >> k; // perform shift logically
 
-	int int_bit_size = sizeof(int) * 8;
+	int int_bit_size = sizeof(int) << 3;
 	int rest_bit_num = int_bit_size - k;
 
 	// mask_xsrl in binary representation: 000...000111...111
