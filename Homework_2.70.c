@@ -22,10 +22,10 @@
 int fits_bits(int x, int n)
 {
 	/* 	We can solve it by first truncated x into only lower-order n bits
-	   in a w-bits word of type int called t, and t has a corresponding n-bits
+	   in a w-bit word of type int called t, and t has a corresponding n-bit
 	   word called a.
 	   	Let the sign bit of a be s, and its bit representaion be [s, x_{n -
-	   2}, x_{n - 3}, ... , x_0]. It can be expanded to a w-bits words of int
+	   2}, x_{n - 3}, ... , x_0]. It can be expanded to a w-bit words of int
 	   type and can be represented as bit vector b = [s, s, ... , s, x_{n - 2},
 	   x_{n - 3}, ... , x_0].
 	   	Here, t and b have the same numeric value. B will not be equal to
@@ -59,10 +59,10 @@ int main()
 {
 	int a = 100;
 	int b = -16;
-	// the maximum value of 16-bits word in two's complement representaion = 32,767
+	// the maximum value of 16-bit word in two's complement representaion = 32,767
 	int c = 33000;
 	int d = 32767;
-	// the minimum value of 16-bits word in two's complement representaion = -32,768
+	// the minimum value of 16-bit word in two's complement representaion = -32,768
 	int e = -999999;
 	int f = -32768;
 
