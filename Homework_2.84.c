@@ -62,6 +62,20 @@ int main()
 
 	puts("");
 
+	print_q_and_a(0.0f, 123.0f);
+	print_q_and_a(-0.0f, 123.0f);
+	print_q_and_a(0.0f, -4567.0f);
+	print_q_and_a(-0.0f, -4567.0f);
+
+	puts("");
+
+	print_q_and_a(100.0f, 0.0f);
+	print_q_and_a(-100.0f, 0.0f);
+	print_q_and_a(100.0f, -0.0f);
+	print_q_and_a(-100.0f, -0.0f);
+
+	puts("");
+
 	print_q_and_a(12345.0f, 2468.0f);
 	print_q_and_a(12345.0f, -2468.0f);
 	print_q_and_a(-12345.0f, 2468.0f);
