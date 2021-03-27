@@ -1,0 +1,28 @@
+/* A homework problem solution for the CS:APP3e
+
+   Copyright (C) 2021 Tongjie Liu <tongjieandliu@gmail.com>.
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.*/
+
+						Extended Precision
+Description				Value				Decimal
+Smallest positive denormalized   0.0...01 * 2^{1 - (2^{15 - 1} - 1)}    0.0...01
+                               = 2^{-63} * 2^{2 - 2^14}          (at least 5000 zeros)
+                               = 2^{- 2^14 - 61}
+Smallest positive normalized     1.0 * 2^{1 - (2^{15 -1} - 1)}          0.0...01
+                               = 2^{2 - 2^14}                    (at least 5000 zeros)
+
+Largest normalized          1.1...1 * 2^{(2^15 - 2) - (2^{15 - 1} - 1)}  1000...000
+           approximately, = 2 * 2^{2^14 - 1}                     (at least 5000 zeros)
+                          = 2^{2^14}
