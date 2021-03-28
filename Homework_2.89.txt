@@ -1,0 +1,41 @@
+/* A homework problem solution for the CS:APP3e
+
+   Copyright (C) 2021 Tongjie Liu <tongjieandliu@gmail.com>.
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.*/
+
+A. Always yields 1
+	Because converting int to double will keep the original value.
+
+
+
+B. Sometimes yields 0
+	Because somtimes x - y will overflow, but not dx - dy. Double has
+a far more greater range.
+
+
+
+C. Sometimes yields 0
+	Because floating-point addition is not associative.
+
+
+
+D. Sometimes yields 0
+	Because floating-point multiplication is not associative.
+
+
+
+A. Always yields 1
+	Because floating-point division is simply applying rounding to the exact
+result of real operations, and dx / dx = dz / dz = 1.
