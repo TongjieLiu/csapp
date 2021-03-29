@@ -50,6 +50,15 @@ float u2f(unsigned int u)
 
 
 
+unsigned int f2u(float f)
+{
+	unsigned int *p = (unsigned int *)&f;
+
+	return *p;
+}
+
+
+
 int main()
 {
 	long i;
@@ -64,7 +73,7 @@ int main()
 		nf = - u2f((unsigned int)i);
 		nfb = u2f(float_negate((float_bits)i));
 		
-		if (nf != nfb) {
+		if (f2u(nf) != f2u(nfb)) {
 			error++;
 			if (error <= 100)
 				printf("ERROR %ld: "			\
