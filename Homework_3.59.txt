@@ -22,11 +22,16 @@
                     + x_l * y_l				term 3,
 
 
-	After we combining this with p = 2^64 * p_h + p_l, we then have:
-	p_h =   LOW_64BITS(x_h * y_l + x_l * y_h)
-	      + HIGH_64BITS(x_l * y_l)
+	After combining this with p = 2^64 * p_h + p_l, we then have:
+
+	p_h = LOW_64BITS(
+		  LOW_64BITS(x_h * y_l)
+		+ LOW_64BITS(x_l * y_h)
+		+ HIGH_64BITS(x_l * y_l)
+	      )
 
 	p_l = LOW_64BITS(x_l * y_l).
+
 The reasons behind this are:
 	1. Term 1 has the factor 2^128, therefore it will not affect the
 128-bit result;
@@ -64,15 +69,23 @@ store_prod:
 
 	imulq	%rsi, %rdx	# %rdx = LOW_64BITS(y_h * x_l)
 
-	addq	%rdx, %rcx	# %rcx = LOW_64BITS(x_h * y_l + y_h * x_l)
+	addq	%rdx, %rcx	# %rcx = LOW_64BITS(
+						  LOW_64BITS(x_h * y_l)
+						+ LOW_64BITS(y_h * x_l)
+				         )
 
 	mulq	%rsi		# %rdx = HIGN_64BITS(x_l * y_l)
 				# %rax = LOW_64BITS(x_l * y_l)
 
-	addq	%rcx, %rdx	# %rdx =   HIGH_64BITS(x_l * y_l)
-                                         + LOW_64BITS(x_h * y_l + y_h * x_l)
+	addq	%rcx, %rdx	# %rdx = LOW_64BITS(
+						       LOW_64BITS(x_h * y_l)
+						     + LOW_64BITS(x_l * y_h)
+						     + HIGH_64BITS(x_l * y_l)
+						   )
 
 
 	movq	%rax, (%rdi)	# save low-order 64-bit
 	movq	%rdx, 8(%rdi)	# save hign-order 64-bit
+
+
 	ret
