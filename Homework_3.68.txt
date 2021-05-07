@@ -1,0 +1,62 @@
+/* A homework problem solution for the CS:APP3e
+
+   Copyright (C) 2021 Tongjie Liu <tongjieandliu@gmail.com>.
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.*/
+
+	We can see on line 2, line 3, and line 4, there are 2 memory refer-
+ences for getting the operands of the addition v1 + v2 = q->t + q->u: 8(%rsi)
+and 32(%rsi), and 1 memory reference for saving the result of addition:
+184(%rdi).
+
+	Since %rdi holds the value of p, then p->y is at the address %rdi +
+184. On the other hand, %rsi holds the value of q of type str2. In the str2
+structure, t has the lower address, then t is at the address %rsi + 8, and u
+is at the address %rsi + 32.
+
+	We have to take account of data alignment feature provided by the
+compiler.
+
+	Q->t is of type int, and int has 4 bytes in the x86-64 ISA. The last
+appropriate address before %rsi + 8 is %rsi + 4. Then q->array has to occupy
+the space at least to %rsi + 4, but no more than %rsi + 8.
+
+	Therefore, B is 5, 6, 7, or 8.
+
+	Q->u is of type long, and long has 8 bytes in the x86-64 ISA. The last
+appropriate address before %rsi + 32 is %rsi + 24. Then q->s has to occupy the
+space at least to %rsi + 24, but no more than %rsi + 32.
+
+	However, q->s is an array of type short, which has 2 bytes. And q->t
+ends at address %rsi + 11, hence q->s starts at address %rsi + 12. If the last
+byte of q->s is at the address %rsi + 24, then the size of q->s(13 bytes) is
+not a multiple of 2. As a consequence, q->s ends at address %rsi + 25 or later.
+
+	Therefore, A is 7, 8, 9, or 10.
+
+	Finally, p->y is of type long. The last appropriate address before %rdi
++ 184 is %rsi + 176. Then p->x has to occupy the space at least to %rdi + 176,
+but no more than %rdi + 184.
+
+	However, p->x is an array of type int. If the last byte of p->x is at
+the address %rdi + 176, then the size of p->x(177 bytes) is not a multiple of 4.
+As a consequence, p->x ends at address %rdi + 179(180 bytes) or %rdi + 183(184
+bytes).
+
+	Therefore, A * B is 45 or 46.
+
+	We can see that 45 = 5 * 9, and 5 is in the range of B, 9 is in the
+range of A. No other possible pairs of values are there.
+
+	In other words, A = 9 and B = 5.
