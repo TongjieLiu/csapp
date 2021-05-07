@@ -1,0 +1,97 @@
+/* A homework problem solution for the CS:APP3e
+
+   Copyright (C) 2021 Tongjie Liu <tongjieandliu@gmail.com>.
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.*/
+
+A.  -----------   <- %rsp + 104
+   |           |
+   |           |
+        ...
+        ...
+        ...
+   |           |
+   |           |
+    -----------
+   |     z     |
+    -----------   <- %rsp + 24
+   | %rsp + 24 |
+    -----------   <- %rsp + 16
+   |     y     |
+    -----------   <- %rsp + 8
+   |     x     |
+    -----------   <- %rsp
+
+
+
+B. s
+
+
+
+C. M[%rsp + 8]	= s.a[0]
+   M[%rsp + 16]	= s.a[1]
+   M[%rsp + 24]	= s.p
+
+
+
+D. M[%rdi]	= r.u[0]
+   M[%rdi + 8]	= r.u[1]
+   M[%rdi + 16]	= r.q
+
+
+
+E.  -----------   <- %rsp + 104
+   |           |
+
+        ...
+        ...
+        ...
+
+    -----------
+   |     z     |
+    -----------   <- %rsp + 80
+   |     x     |
+    -----------   <- %rsp + 72
+   |     y     |
+    -----------   <- %rsp + 64
+
+        ...
+        ...
+        ...
+
+    -----------
+   |     z     |
+    -----------   <- %rsp + 24
+   | %rsp + 24 |
+    -----------   <- %rsp + 16
+   |     y     |
+    -----------   <- %rsp + 8
+   |     x     |
+    -----------   <- %rsp
+
+
+
+F. Structures as arguments:
+	1. The caller copys structures to the argument build area of the
+run-time stack for passing arguments.
+	2. The callee accesses structures by referencing the argument build
+area using %rsp as base in memory references.
+
+
+   Structures as return values:
+	1. The callee copys the return value to the address specified by
+%rdi, which was setted up by the caller before calling the callee.
+	2. The callee assigns %rax to %rdi.
+	3. The caller accesses the return value by using %rsp as base in
+memory references.
