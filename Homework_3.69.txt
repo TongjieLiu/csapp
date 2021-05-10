@@ -1,0 +1,84 @@
+/* A homework problem solution for the CS:APP3e
+
+   Copyright (C) 2021 Tongjie Liu <tongjieandliu@gmail.com>.
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.*/
+
+	Let's analyze the assembly code line by line:
+	...
+	2	...	mov	0x120(%rsi), %ecx
+
+		Combining this with line 3, we can see that %ecx holds the sum
+	n = bp->first + bp->last.
+		We can also see that field "first" is at offset 120 in b_struct.
+
+
+
+	3	...	add	(%rsi), %ecx
+
+		From here, we know that there are 0x120 = 288 bytes between "first"
+	and "last".
+
+
+
+	4	...	lea	(%rdi, %rdi, 4), %rax
+	5	...	lea	(rsi, %rax, 8), %rax
+
+		These two lines computes bp + 40 * i, and later, the result will be
+	used for accessing bp->a[i], which is an array of a_struct.
+		Then it's obvious that the size of a_struct is 40 bytes if it had
+	been aligned(or it's exactly 40 bytes if it had not been aligned).
+
+
+
+	6	...	mov	0x8(%rax), %rdx
+
+		This is for getting ap->idx, and ap->idx has type "long"(we know it is
+	a signed value from the description of subproblem B).
+		Combining this with line 8, we can see that field "idx" has a smaller
+	offset than field "x". From the description of subproblem B, idx has the offset
+	0.
+		The immediate offset 0x8 comes from field "first" in b_struct, therefore
+	field "first" had been made as 8 bytes with extra 4 byte from data alignment.
+		Now, we know that ap = %rax + 0x8 = (bp + 0x8) + 40 * i = &bp->a[i].
+
+
+
+	7	...	movslq	%ecx, %rcx
+	8	...	mov	%rcx, 0x10(%rax, %rdx, 8)
+
+		This is for saving the value of n into ap->x[ap->idx].
+		We can see that x is an array of type "long" from the operation of sign
+	extension from line 7 and the scale factor 8 in the memory reference from line 8.
+		Field "x" has offset 0x10 = 16 in a_struct.
+
+
+
+
+A.	We know from the description of subproblem B that a_struct has only 2 fields, and
+from our analysis they are both multiple of 8 bytes. Therefore field "last" of type int
+needs no extra spaces before it, and 0x120 - 0x8 = 288 - 8 = 40 * 7 bytes are all for the
+array "a" of type a_struct in b_struct.
+	Then, we have CNT = 7.
+
+
+
+B.	From the analysis of subproblem A, we now know that there is no extra spaces for
+data alignment in the 40 bytes of a_struct.
+	Because of the fact 40 - 8 = 32 = 8 * 4, field "x" has 4 elements.
+	Then, we can conclude with the following declaration:
+		typedef struct {
+			long idx;
+			long x[4];
+		} a_struct;
