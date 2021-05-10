@@ -1,0 +1,77 @@
+/* A homework problem solution for the CS:APP3e
+
+   Copyright (C) 2021 Tongjie Liu <tongjieandliu@gmail.com>.
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.*/
+
+A. e1.p:	0
+   e1.y:	8
+   e2.x:	0
+   e2.next:	8
+
+
+
+
+B. max{8 + 8, 8 + 8} = 16
+
+
+
+
+C.	Let's first examine the assembly code line by line:
+	2	movq	8(%rdi), %rax
+
+		There are 2 possible candidates for 8(%rdi), namely up->e1.y and
+	up->e2.next, but line 3 also tells us it has to be a pointer. Therefore,
+	we have to choose the latter.
+
+
+
+	3	movq	(%rax), %rdx
+
+		There are 2 possible candidates for (%rax), namely up->e2.next->e1.
+	p and up->e2.next->e2.x, but line 4 also tells us it has to be a pointer.
+	Therefore, we have to choose the former.
+
+
+
+	4	movq	(%rdx), %rdx
+
+		Now, %rdx = *(up->e2.next->e1.p).
+
+
+
+	5	subq	8(%rax), %rdx
+
+		We have already know from the hint of the subproblem C that the answer
+	does not perform any casting and does not violate any type constraints, and
+	up->e2.next->e1.p is a pointer to a "long" type value, hence 8(%rax) must rep-
+	resents a "long" type value.
+		Now, %rdx = *(up->e2.next->e1.p) - up->e2.next->e1.y.
+
+
+
+	6	movq	%rdx,(%rdi)
+
+		There are 2 possible candidates for (%rdi), namely up->e1.p and
+	up->e2.x, but %rdx holds a "long" type value, then it also has to be a
+	"long" type value demanded by the hint mentioned above.
+		 Therefore, we have to choose the latter.
+
+
+
+	As a consequence, we have the following definition for "proc":
+	void proc(union ele *up)
+	{
+		up->e2.x = *(up->e2.next->e1.p) - up->e2.next->e1.y;
+	}
