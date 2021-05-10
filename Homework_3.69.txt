@@ -50,7 +50,8 @@
 	offset than field "x". From the description of subproblem B, idx has the offset
 	0.
 		The immediate offset 0x8 comes from field "first" in b_struct, therefore
-	field "first" had been made as 8 bytes with extra 4 byte from data alignment.
+	field "first" had been made as 8 bytes with extra 4 byte from data alignment fea-
+	ture of the compiler.
 		Now, we know that ap = %rax + 0x8 = (bp + 0x8) + 40 * i = &bp->a[i].
 
 
@@ -67,18 +68,21 @@
 
 
 A.	We know from the description of subproblem B that a_struct has only 2 fields, and
-from our analysis they are both multiple of 8 bytes. Therefore field "last" of type int
-needs no extra spaces before it, and 0x120 - 0x8 = 288 - 8 = 40 * 7 bytes are all for the
-array "a" of type a_struct in b_struct.
-	Then, we have CNT = 7.
+from our analysis they are both multiple of 8 bytes. Therefore, we have:
+	1. There is no extra space/padding inserted for data alignment purpose between these
+2 fields.
+	2. There is no extra space/padding inserted for data alignment purpose between each
+element of array "a" of type a_struct in b_struct.
+	3. Field "last" of type int in b_struct needs no extra space/padding inserted for
+data alignment purpose before it. In other words, all 0x120 - 0x8 = 288 - 8 = 280 bytes are
+for the array "a".
+	Then, we can conclude that CNT = 280 / 40 = 7.
 
 
 
-B.	From the analysis of subproblem A, we now know that there is no extra spaces for
-data alignment in the 40 bytes of a_struct.
-	Because of the fact 40 - 8 = 32 = 8 * 4, field "x" has 4 elements.
-	Then, we can conclude with the following declaration:
-		typedef struct {
-			long idx;
-			long x[4];
-		} a_struct;
+B.	Based on our analysis of subproblem A, array "x" has (40 - 8) / 8 = 4 elements. Then,
+we can conclude with the following declaration:
+	typedef struct {
+		long idx;
+		long x[4];
+	} a_struct;
