@@ -1,0 +1,39 @@
+/* A homework problem solution for the CS:APP3e
+
+   Copyright (C) 2021 Tongjie Liu <tongjieandliu@gmail.com>.
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.*/
+
+A. 1. The function rounds 8 * n + 30 down to the nearest multiple of 16, the result
+s_2 is 8 * n + 24 if n is an odd number, or 8n + 16 if n is an even number.
+   2. These two results are both above 8 * n + 16. In other words, the space allo-
+cated for the array "p" has at least 16 more bytes, and the reason behind this is
+that p wastes (less than 16 bytes of) space for rounding up to a multiple of 16 ad-
+dress.
+
+
+
+B. The function rounds s_2 up to a multiple of 16, which is p.
+
+
+
+C. Constraint of the maximum value of e_1: s_1 - (8 * n + 24) = 16 * k_1, and here,
+k_1 is a nonnegative integer;
+   Constraint of the minimum value of e_1: s_1 - (8 * n + 16) = 16 * k_2 + 1, and
+here k_2 is a nonnegative integer.
+
+
+
+D. s_2: preserving the same offset that s1 has with the nearest multiple of 16;
+   p: a address that is a multiple of 16
