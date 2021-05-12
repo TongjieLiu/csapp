@@ -1,0 +1,29 @@
+/* A homework problem solution for the CS:APP3e
+
+   Copyright (C) 2021 Tongjie Liu <tongjieandliu@gmail.com>.
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.*/
+
+A.   A series of complex numbers are stored into a series of XMM registers when
+they are passed as arguments.
+     Moreover, a complex number is represented by two floating-point numbers,
+the real part and the imaginary part of it, which are stored separately into
+two XMM registers with the real part in lower-rank register and the imaginary
+part in higher-rank register. For example, %xmm0 = <real part of the first
+complex argument>, %xmm1 = <imaginary part of the first complex argument>.
+
+
+
+B. If the return value of a function is a complex number, %xmm0 stores the
+real part of it, and %xmm1 stores the imaginary part of it.
