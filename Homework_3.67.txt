@@ -91,7 +91,7 @@ area using %rsp as base in memory references.
 
    Structures as return values:
 	1. The callee copys the return value to the address specified by
-%rdi, which was setted up by the caller before calling the callee.
+%rdi, which was set up by the caller before calling the callee.
 	2. The callee assigns %rax to %rdi.
 	3. The caller accesses the return value by using %rsp as base in
 memory references.
