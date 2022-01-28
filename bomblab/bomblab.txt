@@ -1,0 +1,1037 @@
+# A solution for the bomb lab in CS:APP3e
+#
+# Copyright (C) 2022 Tongjie Liu <tongjieandliu@gmail.com>.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+	In this lab, we use gdb as the tool to printing programmer-visible
+state and disassembling the bomb program into assembly language.
+
+	At the beginning, we run the bomb program by typing bash command:
+	$ gdb bomb
+
+	The source program bomb.c can be splitted into 2 parts:
+	1. handle command-line options
+	2. implement the 6 phases
+Since our purpose is to defuse the bomb, we only need to focus on the
+second part. The second part can still be spilitted into some kind of
+initializations and 6 phases, and all phases are quite similar to each
+other in structure. More specifically, each phase consists of 4 steps:
+	1. read input:					input = read_line();
+	2. compare input with the answer:		phase_x(input);
+	3. a secret bomb which we'll discuss later:	phase_defused();
+	4. print a phase-ending message:		printf(a_string);
+
+	To save ourselves some troubles, we could create a file named
+strings.txt for containing all the answer strings we discovered. When
+this is done, we don't need to type in all those strings by our hands,
+but only by passing the file name to the command line when checking if
+we have solved the lab or not.
+
+
+1. Phase 1
+	The strings we need to find out in this lab is in step 2(calling
+phase_x function with the input which the program just read). Therefore,
+What we need to do is to disassemble function phase_1 into human-readable
+assembly language by typing gdb command:
+	(gdb) disas phase_1
+The result is following lines:
+	Dump of assembler code for function phase_1:
+	=> 0x0000000000400ee0 <+0>:     sub    $0x8,%rsp
+	   0x0000000000400ee4 <+4>:     mov    $0x402400,%esi
+	   0x0000000000400ee9 <+9>:     callq  0x401338 <strings_not_equal>
+	   0x0000000000400eee <+14>:    test   %eax,%eax
+	   0x0000000000400ef0 <+16>:    je     0x400ef7 <phase_1+23>
+	   0x0000000000400ef2 <+18>:    callq  0x40143a <explode_bomb>
+	   0x0000000000400ef7 <+23>:    add    $0x8,%rsp
+	   0x0000000000400efb <+27>:    retq   
+	End of assembler dump.
+
+	From the name of function strings_no_equal, test instruction on
+<phase_1+14>, and conditional jump instruction on <phase_1+16>, we can
+deduce that phase_1 is about comparing the input string with the answer
+string. Therefore, we can get the first string by printing the string
+pointed by 0x402400, which was assigned to %esi just before the calling
+of function strings_not_equal. The gdb command for this purpose is:
+	(gdb) x/s 0x402400
+
+	The first string is "Border relations with Canada have never
+been better."(don't forget the period at the end), and we have to save
+it into strings.txt.
+
+
+2. Phase 2
+	Just like before, we try to disassemble function phase_2:
+	(gdb) disas phase_2
+And here is the result:
+	Dump of assembler code for function phase_2:
+	   0x0000000000400efc <+0>:     push   %rbp
+	   0x0000000000400efd <+1>:     push   %rbx
+	   0x0000000000400efe <+2>:     sub    $0x28,%rsp
+	   0x0000000000400f02 <+6>:     mov    %rsp,%rsi
+	   0x0000000000400f05 <+9>:     callq  0x40145c <read_six_numbers>
+	   0x0000000000400f0a <+14>:    cmpl   $0x1,(%rsp)
+	   0x0000000000400f0e <+18>:    je     0x400f30 <phase_2+52>
+	   0x0000000000400f10 <+20>:    callq  0x40143a <explode_bomb>
+	   0x0000000000400f15 <+25>:    jmp    0x400f30 <phase_2+52>
+	   0x0000000000400f17 <+27>:    mov    -0x4(%rbx),%eax
+	   0x0000000000400f1a <+30>:    add    %eax,%eax
+	   0x0000000000400f1c <+32>:    cmp    %eax,(%rbx)
+	   0x0000000000400f1e <+34>:    je     0x400f25 <phase_2+41>
+	   0x0000000000400f20 <+36>:    callq  0x40143a <explode_bomb>
+	   0x0000000000400f25 <+41>:    add    $0x4,%rbx
+	   0x0000000000400f29 <+45>:    cmp    %rbp,%rbx
+	   0x0000000000400f2c <+48>:    jne    0x400f17 <phase_2+27>
+	   0x0000000000400f2e <+50>:    jmp    0x400f3c <phase_2+64>
+	   0x0000000000400f30 <+52>:    lea    0x4(%rsp),%rbx
+	   0x0000000000400f35 <+57>:    lea    0x18(%rsp),%rbp
+	   0x0000000000400f3a <+62>:    jmp    0x400f17 <phase_2+27>
+	   0x0000000000400f3c <+64>:    add    $0x28,%rsp
+	   0x0000000000400f40 <+68>:    pop    %rbx
+	   0x0000000000400f41 <+69>:    pop    %rbp
+	   0x0000000000400f42 <+70>:    retq   
+	End of assembler dump.
+
+	We should also disassemble function read_six_numbers for the reason
+that the phase 2 is more complicated and read_six_numbers may do something
+we wouldn't expect:
+	Dump of assembler code for function read_six_numbers:
+	   0x000000000040145c <+0>:     sub    $0x18,%rsp
+	   0x0000000000401460 <+4>:     mov    %rsi,%rdx
+	   0x0000000000401463 <+7>:     lea    0x4(%rsi),%rcx
+	   0x0000000000401467 <+11>:    lea    0x14(%rsi),%rax
+	   0x000000000040146b <+15>:    mov    %rax,0x8(%rsp)
+	   0x0000000000401470 <+20>:    lea    0x10(%rsi),%rax
+	   0x0000000000401474 <+24>:    mov    %rax,(%rsp)
+	   0x0000000000401478 <+28>:    lea    0xc(%rsi),%r9
+	   0x000000000040147c <+32>:    lea    0x8(%rsi),%r8
+	   0x0000000000401480 <+36>:    mov    $0x4025c3,%esi
+	   0x0000000000401485 <+41>:    mov    $0x0,%eax
+	   0x000000000040148a <+46>:    callq  0x400bf0 <__isoc99_sscanf@plt>
+	   0x000000000040148f <+51>:    cmp    $0x5,%eax
+	   0x0000000000401492 <+54>:    jg     0x401499 <read_six_numbers+61>
+	   0x0000000000401494 <+56>:    callq  0x40143a <explode_bomb>
+	   0x0000000000401499 <+61>:    add    $0x18,%rsp
+	   0x000000000040149d <+65>:    retq   
+	End of assembler dump.
+
+	Obviously, function read_six_numbers is using sscanf to parsing the
+string that we've given to stdin. According to the manpage, sscanf has the
+following prototype:
+	int sscanf(const char *str, const char *format, ...);
+
+	We should all know that register %esi holds the second argument in
+the x86-64 C calling convention. To see the format string passed to sscanf,
+we can simply print this second argument by:
+	(gdb) x/s 0x4025c3
+The result is "%d %d %d %d %d %d".
+
+	This confirms the name of function read_six_number, since this function
+is really about reading six numbers.
+
+	If we pay enough attention to the rest of arguments, we may discover
+that all numbers are saved as local variables on the stack, since the corres-
+ponding arguments are all addresses of the stack constructed by lea instruc-
+tions. Note that this is very important for the rest of analysis.
+
+	If we look at function phase_2, we can see there are mainly 2 parts:
+	1. call function read_six_numbers
+	2. compare input string with the answer numbers
+Moreover, the second part still consists of 2 parts, and they are:
+	1. compare the first input number with 1 on <phase_2+14>
+	2. a loop structure: in each cycle, it compares the input number with
+the double of answer number in previous cycle
+
+	Therefore, the second string is "1 2 4 8 16 32". We have to append it
+into strings.txt.
+
+
+3. Phase 3
+	The assembly language version of of function phase_3:
+	Dump of assembler code for function phase_3:
+	   0x0000000000400f43 <+0>:     sub    $0x18,%rsp
+	   0x0000000000400f47 <+4>:     lea    0xc(%rsp),%rcx
+	   0x0000000000400f4c <+9>:     lea    0x8(%rsp),%rdx
+	   0x0000000000400f51 <+14>:    mov    $0x4025cf,%esi
+	   0x0000000000400f56 <+19>:    mov    $0x0,%eax
+	   0x0000000000400f5b <+24>:    callq  0x400bf0 <__isoc99_sscanf@plt>
+	   0x0000000000400f60 <+29>:    cmp    $0x1,%eax
+	   0x0000000000400f63 <+32>:    jg     0x400f6a <phase_3+39>
+	   0x0000000000400f65 <+34>:    callq  0x40143a <explode_bomb>
+	   0x0000000000400f6a <+39>:    cmpl   $0x7,0x8(%rsp)
+	   0x0000000000400f6f <+44>:    ja     0x400fad <phase_3+106>
+	   0x0000000000400f71 <+46>:    mov    0x8(%rsp),%eax
+	   0x0000000000400f75 <+50>:    jmpq   *0x402470(,%rax,8)
+	   0x0000000000400f7c <+57>:    mov    $0xcf,%eax
+	   0x0000000000400f81 <+62>:    jmp    0x400fbe <phase_3+123>
+	   0x0000000000400f83 <+64>:    mov    $0x2c3,%eax
+	   0x0000000000400f88 <+69>:    jmp    0x400fbe <phase_3+123>
+	   0x0000000000400f8a <+71>:    mov    $0x100,%eax
+	   0x0000000000400f8f <+76>:    jmp    0x400fbe <phase_3+123>
+	   0x0000000000400f91 <+78>:    mov    $0x185,%eax
+	   0x0000000000400f96 <+83>:    jmp    0x400fbe <phase_3+123>
+	   0x0000000000400f98 <+85>:    mov    $0xce,%eax
+	   0x0000000000400f9d <+90>:    jmp    0x400fbe <phase_3+123>
+	   0x0000000000400f9f <+92>:    mov    $0x2aa,%eax
+	   0x0000000000400fa4 <+97>:    jmp    0x400fbe <phase_3+123>
+	   0x0000000000400fa6 <+99>:    mov    $0x147,%eax
+	   0x0000000000400fab <+104>:   jmp    0x400fbe <phase_3+123>
+	   0x0000000000400fad <+106>:   callq  0x40143a <explode_bomb>
+	   0x0000000000400fb2 <+111>:   mov    $0x0,%eax
+	   0x0000000000400fb7 <+116>:   jmp    0x400fbe <phase_3+123>
+	   0x0000000000400fb9 <+118>:   mov    $0x137,%eax
+	   0x0000000000400fbe <+123>:   cmp    0xc(%rsp),%eax
+	   0x0000000000400fc2 <+127>:   je     0x400fc9 <phase_3+134>
+	   0x0000000000400fc4 <+129>:   callq  0x40143a <explode_bomb>
+	   0x0000000000400fc9 <+134>:   add    $0x18,%rsp
+	   0x0000000000400fcd <+138>:   retq   
+	End of assembler dump.
+
+	There are mainly 3 parts in function phase_3:
+
+	1. sscanf: read 2 numbers from input string
+	By examining address 0x4025cf using x/s command, we know that the
+format string is "%d %d". In other words, the answer string contains two
+numbers.
+
+	The numbers extracted from the input string are stored in %rsp+0x8
+and %rsp+0xc on the stack, since addresses of 2 local variables have been
+passed to function sscanf as arguments.
+
+	After the function call of sscanf, the bomb program checks if the
+number of arguments is correct on <phase_3+29>. If not, the bomb will explode.
+Although the condition is concerning 1, but "greater than 1" also means
+"greater than or equal to 2".
+
+	2. comparison of the first number
+	On address <phase_3+39>, the bomb program compares the first number
+with 7. If the first input number is greater than 7, the bomb will explode.
+Here, we choose 7.
+
+	3. comparison of the second number
+	The second number is compared in 3 steps:
+		1. on <phase_3+50>, a unconditional jump(indirect jump)
+		2. from <phase_3+57> to <phase_3+118>, there are 9 candidate
+values for %rax, since there are 9 candidate jump targets for step 1
+		3. comparing the second input number with %eax
+As you can see, the answer of the second number is depending on the jump
+target of this unconditional jump on <phase_3+50>. So, where does it jump to?
+
+	The method we use is very simple. We actually don't need to compute
+the the jump target of the unconditional jump on <phase_3+50>, only need to
+follow the execution after setting a breakpoint at this unconditional jump.
+The gdb commands we use are:
+	(gdb) break *0x400f75
+	(gdb) run strings.txt
+
+	The strings.txt needs no modification.
+
+	We type in 7 and a random number(for instance, 123) after the message
+printed by the bomb program.
+
+	Now, gdb stops at the breakpoint for addresss 0x400f75. After that,
+we make gdb only execute one instruction:
+	(gdb) stepi
+
+	Then, we know that the value given to %rax is 0x147 on <phase_3+99>,
+and 0x147 in decimal is 327.
+
+	At the end, we kill the process of bomb program, since we don't need
+it anymore and we don't want the bomb to explode with the wrong string we typed
+in before. In the future, we may need to set some new breakpoints, and try to
+directly stop at them, hence we have to delete this breakpoint. The commands
+for those two things are:
+	(gdb) kill
+	(gdb) delete
+
+	Therefore, the third string is: "7 327". We should append it into
+strings.txt.
+
+
+4. Phase 4
+	Disassemble the phase_4 function. The result is following:
+	Dump of assembler code for function phase_4:
+	=> 0x000000000040100c <+0>:     sub    $0x18,%rsp
+	   0x0000000000401010 <+4>:     lea    0xc(%rsp),%rcx
+	   0x0000000000401015 <+9>:     lea    0x8(%rsp),%rdx
+	   0x000000000040101a <+14>:    mov    $0x4025cf,%esi
+	   0x000000000040101f <+19>:    mov    $0x0,%eax
+	   0x0000000000401024 <+24>:    callq  0x400bf0 <__isoc99_sscanf@plt>
+	   0x0000000000401029 <+29>:    cmp    $0x2,%eax
+	   0x000000000040102c <+32>:    jne    0x401035 <phase_4+41>
+	   0x000000000040102e <+34>:    cmpl   $0xe,0x8(%rsp)
+	   0x0000000000401033 <+39>:    jbe    0x40103a <phase_4+46>
+	   0x0000000000401035 <+41>:    callq  0x40143a <explode_bomb>
+	   0x000000000040103a <+46>:    mov    $0xe,%edx
+	   0x000000000040103f <+51>:    mov    $0x0,%esi
+	   0x0000000000401044 <+56>:    mov    0x8(%rsp),%edi
+	   0x0000000000401048 <+60>:    callq  0x400fce <func4>
+	   0x000000000040104d <+65>:    test   %eax,%eax
+	   0x000000000040104f <+67>:    jne    0x401058 <phase_4+76>
+	   0x0000000000401051 <+69>:    cmpl   $0x0,0xc(%rsp)
+	   0x0000000000401056 <+74>:    je     0x40105d <phase_4+81>
+	   0x0000000000401058 <+76>:    callq  0x40143a <explode_bomb>
+	   0x000000000040105d <+81>:    add    $0x18,%rsp
+	   0x0000000000401061 <+85>:    retq   
+	End of assembler dump.
+
+	The structure is very familiar: first call sscanf and then compare.
+
+	First, we examine the address of format string given on <phase_4+14>:
+	(gdb) x/s 0x4025cf
+It's "%d %d", in other words, 2 numbers of type int. The return value check
+of sscanf on <phase_4+29> and <phase_4+32> confirms our result, since sscanf
+returns the number of input items that are successfully stored into addresses
+specified by its arguments.
+
+	On <phase_4+4> and <phase_4+9>, we see that the first number is stored
+into %rsp+0x8 and the second number into $rsp+0xc, which are normally represent
+local varialbles of functions in the C programming language.
+
+	On <phase_4+34>, the bomb program compares the first input number with
+0xe. If the input number is greater than 0xe, then the bomb will explode.
+
+	Phase 4 does only 2 things after that:
+		1. calling func4 with 3 arguments: the first input number, 0,
+and 0xe, and check if the return value of func4 is 0
+		2. comparing the second input number with 0
+
+	Therefore, the second answer number is 0, and we need to analyze func4
+in order to finding out the first answer number. The assembly language version
+of func4 is:
+	Dump of assembler code for function func4:
+	   0x0000000000400fce <+0>:     sub    $0x8,%rsp
+	   0x0000000000400fd2 <+4>:     mov    %edx,%eax
+	   0x0000000000400fd4 <+6>:     sub    %esi,%eax
+	   0x0000000000400fd6 <+8>:     mov    %eax,%ecx
+	   0x0000000000400fd8 <+10>:    shr    $0x1f,%ecx
+	   0x0000000000400fdb <+13>:    add    %ecx,%eax
+	   0x0000000000400fdd <+15>:    sar    %eax
+	   0x0000000000400fdf <+17>:    lea    (%rax,%rsi,1),%ecx
+	   0x0000000000400fe2 <+20>:    cmp    %edi,%ecx
+	   0x0000000000400fe4 <+22>:    jle    0x400ff2 <func4+36>
+	   0x0000000000400fe6 <+24>:    lea    -0x1(%rcx),%edx
+	   0x0000000000400fe9 <+27>:    callq  0x400fce <func4>
+	   0x0000000000400fee <+32>:    add    %eax,%eax
+	   0x0000000000400ff0 <+34>:    jmp    0x401007 <func4+57>
+	   0x0000000000400ff2 <+36>:    mov    $0x0,%eax
+	   0x0000000000400ff7 <+41>:    cmp    %edi,%ecx
+	   0x0000000000400ff9 <+43>:    jge    0x401007 <func4+57>
+	   0x0000000000400ffb <+45>:    lea    0x1(%rcx),%esi
+	   0x0000000000400ffe <+48>:    callq  0x400fce <func4>
+	   0x0000000000401003 <+53>:    lea    0x1(%rax,%rax,1),%eax
+	   0x0000000000401007 <+57>:    add    $0x8,%rsp
+	   0x000000000040100b <+61>:    retq   
+	End of assembler dump.
+
+	After executing <func4+8>, both %eax and %ecx equal 0xe. The logical
+right shift on <func4+10> makes %ecx becoming 0.
+
+	After executing <func4+15>, %eax is 7(0xe is 1110 in binary, and sar
+instruction with a single operand means shifting by 1).
+
+	On <func4+17>, lea instruction makes %ecx becoming 7.
+
+	After comparing the first input number with %ecx(its value is 7) on
+<func4+20>, There are two outcomes from this, namely:
+	1. continue to execute <func4+24>
+	2. jump to <func4+36>
+The first situation is more complicated, since it make func4 calling itself
+recursively. Therefore, we should choose a first input number x that satisfy
+the condition x >= 7, and then we'll get into the second situation.
+
+	In the second situation, func4 can return 0, and this keeps bomb from
+exploding. The conditional execution on <func4+41> and <func4+43> also has two
+outcomes:
+	1. func4 returns with 0
+	2. func4 calls itself recursivelly
+Of course, we'll choose the first situation, since it made the analysis more
+easy. The condition the first input number x needs to satisfy is simply x <= 7.
+If we combine this with the condition that "jump to <func4+36>" needs to satisfy,
+i.e. x >= 7, we can conclude that x = 7.
+
+	Therefore, the fourth string is "7 0". We should append it into strings.
+txt.
+
+
+5. Phase 5
+	Disassemble the phase_5 function:
+	Dump of assembler code for function phase_5:
+	   0x0000000000401062 <+0>:     push   %rbx
+	   0x0000000000401063 <+1>:     sub    $0x20,%rsp
+	   0x0000000000401067 <+5>:     mov    %rdi,%rbx
+	   0x000000000040106a <+8>:     mov    %fs:0x28,%rax
+	   0x0000000000401073 <+17>:    mov    %rax,0x18(%rsp)
+	   0x0000000000401078 <+22>:    xor    %eax,%eax
+	   0x000000000040107a <+24>:    callq  0x40131b <string_length>
+	   0x000000000040107f <+29>:    cmp    $0x6,%eax
+	   0x0000000000401082 <+32>:    je     0x4010d2 <phase_5+112>
+	   0x0000000000401084 <+34>:    callq  0x40143a <explode_bomb>
+	   0x0000000000401089 <+39>:    jmp    0x4010d2 <phase_5+112>
+	   0x000000000040108b <+41>:    movzbl (%rbx,%rax,1),%ecx
+	   0x000000000040108f <+45>:    mov    %cl,(%rsp)
+	   0x0000000000401092 <+48>:    mov    (%rsp),%rdx
+	   0x0000000000401096 <+52>:    and    $0xf,%edx
+	   0x0000000000401099 <+55>:    movzbl 0x4024b0(%rdx),%edx
+	   0x00000000004010a0 <+62>:    mov    %dl,0x10(%rsp,%rax,1)
+	   0x00000000004010a4 <+66>:    add    $0x1,%rax
+	   0x00000000004010a8 <+70>:    cmp    $0x6,%rax
+	   0x00000000004010ac <+74>:    jne    0x40108b <phase_5+41>
+	   0x00000000004010ae <+76>:    movb   $0x0,0x16(%rsp)
+	   0x00000000004010b3 <+81>:    mov    $0x40245e,%esi
+	   0x00000000004010b8 <+86>:    lea    0x10(%rsp),%rdi
+	   0x00000000004010bd <+91>:    callq  0x401338 <strings_not_equal>
+	   0x00000000004010c2 <+96>:    test   %eax,%eax
+	   0x00000000004010c4 <+98>:    je     0x4010d9 <phase_5+119>
+	   0x00000000004010c6 <+100>:   callq  0x40143a <explode_bomb>
+	   0x00000000004010cb <+105>:   nopl   0x0(%rax,%rax,1)
+	   0x00000000004010d0 <+110>:   jmp    0x4010d9 <phase_5+119>
+	   0x00000000004010d2 <+112>:   mov    $0x0,%eax
+	   0x00000000004010d7 <+117>:   jmp    0x40108b <phase_5+41>
+	   0x00000000004010d9 <+119>:   mov    0x18(%rsp),%rax
+	   0x00000000004010de <+124>:   xor    %fs:0x28,%rax
+	   0x00000000004010e7 <+133>:   je     0x4010ee <phase_5+140>
+	   0x00000000004010e9 <+135>:   callq  0x400b30 <__stack_chk_fail@plt>
+	   0x00000000004010ee <+140>:   add    $0x20,%rsp
+	   0x00000000004010f2 <+144>:   pop    %rbx
+	   0x00000000004010f3 <+145>:   retq   
+	End of assembler dump.
+
+	The body of string_length in assembly language is:
+	Dump of assembler code for function string_length:
+	   0x000000000040131b <+0>:     cmpb   $0x0,(%rdi)
+	   0x000000000040131e <+3>:     je     0x401332 <string_length+23>
+	   0x0000000000401320 <+5>:     mov    %rdi,%rdx
+	   0x0000000000401323 <+8>:     add    $0x1,%rdx
+	   0x0000000000401327 <+12>:    mov    %edx,%eax
+	   0x0000000000401329 <+14>:    sub    %edi,%eax
+	   0x000000000040132b <+16>:    cmpb   $0x0,(%rdx)
+	   0x000000000040132e <+19>:    jne    0x401323 <string_length+8>
+	   0x0000000000401330 <+21>:    repz retq 
+	   0x0000000000401332 <+23>:    mov    $0x0,%eax
+	   0x0000000000401337 <+28>:    retq   
+	End of assembler dump.
+This function has only 1 argument(here we name it as string_pointer), and
+it's possible to represent this function in the C programming languege as
+following:
+	int string_length(char *string_pointer)
+	{
+		int ret;
+		char *p;
+
+
+		if (*string_pointer == 0) {
+			return 0;
+		} else {
+			p = string_pointer;
+
+			do {
+				p++;
+				ret = lower_32_bits(p) - \
+					lower_32_bits(string_pointer);
+			} while (*p != 0);
+
+			return ret;
+		}
+	}
+The reason behind string_length returns int type is that the bomb program uses
+register %eax for checking return value of string_length on <phase_5+29>.
+
+	On the other hand, phase_5 can also be represented in the C programming
+language as:
+	void phase_5(char *input)
+	{
+		char c;
+		int eax, edx;
+		char buf[7]; // let's assume it's located at %rsp + 0x10
+
+
+		if (string_length(input) != 6)
+			explode_bomb();
+
+
+		eax = 0; // <+112>
+		do {
+			c = *(input + eax); // <41>
+
+			edx = c & 0xf; // <+52>
+
+			edx = (*((char *)(edx + 0x4024b0))); // <+55>
+
+			buf[%eax] = (char)edx; // <+62>
+
+			eax++;
+		} while (eax != 6);
+
+
+		buf[6] = 0; // <+76>
+
+
+		/* (gdb) x/s 0x40245e
+		 * 0x40245e:    "flyers" */
+		if (string_not_equal(buf, (char *)0x40245e) != 0)
+			explode_bomb();
+	}
+
+	Since the characters start from the location 0x4024b0 are:
+	0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+	m a d u i e r s n f o  t  v  b  y  l
+the input string we need can be constructed through the following steps:
+	1. find out relative locations of string "flyers"
+		f   l   y   e   r   s
+		9  15   14  5   6   7
+	2. convert relative locations to ascii characters
+	To get a ascii table, we can use shell command:
+		man ascii
+Since some ascii characters can not be typed in by keyboards and only the
+lower 4 bits actually matter, we'll use ascii characters for lowercase letters
+in the input string. And the result is:
+		location(decimal)        9    15   14    5    6    7
+		location(hexadecimal)    0x9  0xf  0xe  0x5  0x6  0x7
+		location + 0x60          0x69 0x6f 0x6e 0x65 0x66 0x67
+		lowercase letter         i    o    n    e    f    g
+
+	Therefore, the fifth string is "ionefg". We should append it into
+strings.txt.
+
+
+6. Phase 6
+	Disassemble the phase_6 function:
+	Dump of assembler code for function phase_6:
+	   0x00000000004010f4 <+0>:     push   %r14
+	   0x00000000004010f6 <+2>:     push   %r13
+	   0x00000000004010f8 <+4>:     push   %r12
+	   0x00000000004010fa <+6>:     push   %rbp
+	   0x00000000004010fb <+7>:     push   %rbx
+	   0x00000000004010fc <+8>:     sub    $0x50,%rsp
+	   0x0000000000401100 <+12>:    mov    %rsp,%r13
+	   0x0000000000401103 <+15>:    mov    %rsp,%rsi
+	   0x0000000000401106 <+18>:    callq  0x40145c <read_six_numbers>
+	   0x000000000040110b <+23>:    mov    %rsp,%r14
+	   0x000000000040110e <+26>:    mov    $0x0,%r12d
+	   0x0000000000401114 <+32>:    mov    %r13,%rbp
+	   0x0000000000401117 <+35>:    mov    0x0(%r13),%eax
+	   0x000000000040111b <+39>:    sub    $0x1,%eax
+	   0x000000000040111e <+42>:    cmp    $0x5,%eax
+	   0x0000000000401121 <+45>:    jbe    0x401128 <phase_6+52>
+	   0x0000000000401123 <+47>:    callq  0x40143a <explode_bomb>
+	   0x0000000000401128 <+52>:    add    $0x1,%r12d
+	   0x000000000040112c <+56>:    cmp    $0x6,%r12d
+	   0x0000000000401130 <+60>:    je     0x401153 <phase_6+95>
+	   0x0000000000401132 <+62>:    mov    %r12d,%ebx
+	   0x0000000000401135 <+65>:    movslq %ebx,%rax
+	   0x0000000000401138 <+68>:    mov    (%rsp,%rax,4),%eax
+	   0x000000000040113b <+71>:    cmp    %eax,0x0(%rbp)
+	   0x000000000040113e <+74>:    jne    0x401145 <phase_6+81>
+	   0x0000000000401140 <+76>:    callq  0x40143a <explode_bomb>
+	   0x0000000000401145 <+81>:    add    $0x1,%ebx
+	   0x0000000000401148 <+84>:    cmp    $0x5,%ebx
+	   0x000000000040114b <+87>:    jle    0x401135 <phase_6+65>
+	   0x000000000040114d <+89>:    add    $0x4,%r13
+	   0x0000000000401151 <+93>:    jmp    0x401114 <phase_6+32>
+	   0x0000000000401153 <+95>:    lea    0x18(%rsp),%rsi
+	   0x0000000000401158 <+100>:   mov    %r14,%rax
+	   0x000000000040115b <+103>:   mov    $0x7,%ecx
+	   0x0000000000401160 <+108>:   mov    %ecx,%edx
+	   0x0000000000401162 <+110>:   sub    (%rax),%edx
+	   0x0000000000401164 <+112>:   mov    %edx,(%rax)
+	   0x0000000000401166 <+114>:   add    $0x4,%rax
+	   0x000000000040116a <+118>:   cmp    %rsi,%rax
+	   0x000000000040116d <+121>:   jne    0x401160 <phase_6+108>
+	   0x000000000040116f <+123>:   mov    $0x0,%esi
+	   0x0000000000401174 <+128>:   jmp    0x401197 <phase_6+163>
+	   0x0000000000401176 <+130>:   mov    0x8(%rdx),%rdx
+	   0x000000000040117a <+134>:   add    $0x1,%eax
+	   0x000000000040117d <+137>:   cmp    %ecx,%eax
+	   0x000000000040117f <+139>:   jne    0x401176 <phase_6+130>
+	   0x0000000000401181 <+141>:   jmp    0x401188 <phase_6+148>
+	   0x0000000000401183 <+143>:   mov    $0x6032d0,%edx
+	   0x0000000000401188 <+148>:   mov    %rdx,0x20(%rsp,%rsi,2)
+	   0x000000000040118d <+153>:   add    $0x4,%rsi
+	   0x0000000000401191 <+157>:   cmp    $0x18,%rsi
+	   0x0000000000401195 <+161>:   je     0x4011ab <phase_6+183>
+	   0x0000000000401197 <+163>:   mov    (%rsp,%rsi,1),%ecx
+	   0x000000000040119a <+166>:   cmp    $0x1,%ecx
+	   0x000000000040119d <+169>:   jle    0x401183 <phase_6+143>
+	   0x000000000040119f <+171>:   mov    $0x1,%eax
+	   0x00000000004011a4 <+176>:   mov    $0x6032d0,%edx
+	   0x00000000004011a9 <+181>:   jmp    0x401176 <phase_6+130>
+	   0x00000000004011ab <+183>:   mov    0x20(%rsp),%rbx
+	   0x00000000004011b0 <+188>:   lea    0x28(%rsp),%rax
+	   0x00000000004011b5 <+193>:   lea    0x50(%rsp),%rsi
+	   0x00000000004011ba <+198>:   mov    %rbx,%rcx
+	   0x00000000004011bd <+201>:   mov    (%rax),%rdx
+	   0x00000000004011c0 <+204>:   mov    %rdx,0x8(%rcx)
+	   0x00000000004011c4 <+208>:   add    $0x8,%rax
+	   0x00000000004011c8 <+212>:   cmp    %rsi,%rax
+	   0x00000000004011cb <+215>:   je     0x4011d2 <phase_6+222>
+	   0x00000000004011cd <+217>:   mov    %rdx,%rcx
+	   0x00000000004011d0 <+220>:   jmp    0x4011bd <phase_6+201>
+	   0x00000000004011d2 <+222>:   movq   $0x0,0x8(%rdx)
+	   0x00000000004011da <+230>:   mov    $0x5,%ebp
+	   0x00000000004011df <+235>:   mov    0x8(%rbx),%rax
+	   0x00000000004011e3 <+239>:   mov    (%rax),%eax
+	   0x00000000004011e5 <+241>:   cmp    %eax,(%rbx)
+	   0x00000000004011e7 <+243>:   jge    0x4011ee <phase_6+250>
+	   0x00000000004011e9 <+245>:   callq  0x40143a <explode_bomb>
+	   0x00000000004011ee <+250>:   mov    0x8(%rbx),%rbx
+	   0x00000000004011f2 <+254>:   sub    $0x1,%ebp
+	   0x00000000004011f5 <+257>:   jne    0x4011df <phase_6+235>
+	   0x00000000004011f7 <+259>:   add    $0x50,%rsp
+	   0x00000000004011fb <+263>:   pop    %rbx
+	   0x00000000004011fc <+264>:   pop    %rbp
+	   0x00000000004011fd <+265>:   pop    %r12
+	   0x00000000004011ff <+267>:   pop    %r13
+	   0x0000000000401201 <+269>:   pop    %r14
+	   0x0000000000401203 <+271>:   retq   
+	End of assembler dump.
+
+	It's more clear to describe the behavior of function phase_6 if we
+translated it into the C programming language. Since bomb.c doesn't use
+the return value of phase_6, we may assume phase_6 returns void type.
+	void phase_6(char *input)
+	{
+		/*	The format string used in sscanf in read_six_numbers
+		 * is "%d %d %d %d %d %d", and the extracted numbers are saved
+		 * on the stack as local variables. */
+		int number1; // let's assume it is located at %rsp
+		int number2; // let's assume it is located at %rsp + 0x4
+		int number3; // let's assume it is located at %rsp + 0x8
+		int number4; // let's assume it is located at %rsp + 0xc
+		int number5; // let's assume it is located at %rsp + 0x10
+		int number6; // let's assume it is located at %rsp + 0x14
+
+		int index; // a.k.a register ebx
+		int index_backup; // a.k.a register r12d
+
+		int number;
+
+		int *r13, *rbp;
+
+		int *end;
+		int *np; // number pointer
+
+		int i, j;
+		int buf[12]; // let's assume it starts at %rsp + 0x20
+		long **lpbuf;
+		long *lp;
+
+
+
+
+		/* extract 6 numbers into variable number1 to number6 */
+		read_six_numbers();
+
+
+		/* step 1 */
+		index_backup = 0; // <+26>
+		r13 = &number1; // <+12>
+
+		while(1) {
+			rbp = r13; // <+32>
+
+
+			if ((*r13 - 1) > 5) // from <+39> to <+47>
+				explode_bomb();
+
+
+			index_backup++; // <+52>
+			if (index_backup == 6) // <+56>
+				break;
+
+
+			index = index_backup; // <+62>
+			do {
+				/* number = number2, ..., number6; */
+				number = *(&number1 + index); // <+68>
+
+				if (*rbp == number) // <+71>
+					explode_bomb();
+
+				index++; // <+81>
+			} while (index <= 5); // <+84>
+
+
+			r13++; // <+89>
+		} // <+93>
+
+
+		/* step 2 */
+		end = &number6 + 1; // <+95>
+		np = number1 // <+100>
+
+		do {
+			*np = 7 - *np; // <+110> and <+112>
+			np++; // <+114>
+		} while (np != end); // <+118>
+
+
+		/* step 3: from <+123> to <+181> */
+		lpbuf = buf;
+
+		/* (gdb) x/gx 0x6032d0 + 8
+		 * 0x6032d8 <node1+8>:     0x00000000006032e0
+		 *
+		 * (gdb) x/gx 0x6032e0 + 8
+		 * 0x6032e8 <node2+8>:     0x00000000006032f0 
+		 *
+		 * (gdb) x/gx 0x6032f0 + 8
+		 * 0x6032f8 <node3+8>:     0x0000000000603300 
+		 *
+		 * (gdb) x/gx 0x603300 + 8
+		 * 0x603308 <node4+8>:     0x0000000000603310 
+		 *
+		 * (gdb) x/gx 0x603310 + 8
+		 * 0x603318 <node5+8>:     0x0000000000603320 */
+		for (np = &number1, i = 0; i < 6; np++, i++) {
+			if (*np == 1) { // <+166>
+				buf[i * 2] = 0x6032d0; // <+148>
+				buf[i * 2 + 1] = 0; // <+148>
+			} else { // <+171>
+				lp = 0x6032d0;
+
+				for (j = 1; j != *np; j++)
+					lp = *(lp + 1); // <+130>
+
+				lpbuf[i] = lp; // <+148>
+			}
+		}
+
+
+		/* step 4: from <+183> to <+222> */
+		lp = lpbuf[0]; // <+198>
+
+		for (i = 1; i != 6; i++) {
+			*(lp + 1) = lpbuf[i]; // <+204>
+			lp = lpbuf[i]; // <+217>
+		}
+
+		*(lp + 1) = 0; // <+222>
+
+
+		/* step 5: from <+230> to <+257>*/
+		lp = lpbuf[0];
+
+		for (i = 5; i != 0; i--) {
+			if ((int)*lp < (int)*((long *)*(lp + 1))) // <+241>
+				explode_bomb();
+
+			lp = *(lp + 1);
+		}
+	}
+
+	As you can see, we could divide phase_4 into the following steps:
+	1. 2 constraints:
+		a. these numbers are all less than or equal to 6(and greater
+than 0, since the comparison on <+42> is for unsigned numbers and the sub-
+traction before it can result in a negative number(-1) when the number is 0)
+		b. these numbers different from each other
+	2. subtract each number from 7
+	3. assignment:
+		lpbuf[i] = 0x6032d0, when input_number[i] = 1;
+		lpbuf[i] = 0x6032e0, when input_number[i] = 2;
+		lpbuf[i] = 0x6032f0, when input_number[i] = 3;
+		lpbuf[i] = 0x603300, when input_number[i] = 4;
+		lpbuf[i] = 0x603310, when input_number[i] = 5;
+		lpbuf[i] = 0x603320, when input_number[i] = 6;
+		For all i = 0, 1, ..., 5
+	4. assignment:
+		*(lpbuf[0] + 1) = lpbuf[1];
+		*(lpbuf[1] + 1) = lpbuf[2];
+		*(lpbuf[2] + 1) = lpbuf[3];
+		*(lpbuf[3] + 1) = lpbuf[4];
+		*(lpbuf[4] + 1) = lpbuf[5];
+		*(lpbuf[5] + 1) = 0;
+	5. constraint:
+		lower_32bits(*lpbuf[0]) >= lower_32bits(*lpbuf[1]) >=
+		lower_32bits(*lpbuf[2]) >= lower_32bits(*lpbuf[3]) >=
+		lower_32bits(*lpbuf[4]) >= lower_32bits(*lpbuf[5])
+
+	As you can see, There are 3 constraints on the 6 numbers extracted from
+the input string. The first two are from step 1, and the last one from step 5;
+
+	The first two contraint demand that these 6 numbers can only consists of
+1, ..., 6, and are non-repetitive. For instance, "1 2 3 4 5", "6 5 4 3 2 1", etc.
+
+	To solve the third constraint, we need more insights into the operations
+in step 5. The decision of represent the third constraint in the form above made
+it losing some information, such as the list structure consisting of at least
+memories pointed by lpbuf[0], lpbuf[1], ..., lpbuf[5]. These memories are at
+0x6032d0 to 0x603330. Here is the list structure before entering phase_6:
+	(gdb) x/12gx 0x6032d0
+	0x6032d0 <node1>:       0x000000010000014c      0x00000000006032e0
+	0x6032e0 <node2>:       0x00000002000000a8      0x00000000006032f0
+	0x6032f0 <node3>:       0x000000030000039c      0x0000000000603300
+	0x603300 <node4>:       0x00000004000002b3      0x0000000000603310
+	0x603310 <node5>:       0x00000005000001dd      0x0000000000603320
+	0x603320 <node6>:       0x00000006000001bb      0x0000000000000000
+
+	In step 4, the list structure at 0x6032d0 is modified in the 6 quadwords
+shown on the right. The 6 quadwords on the left is left unchanged. The new data
+wrote into the right 6 quadwords are addresses of the left 6 quadwords.
+
+	We could think of a solution to the list structure that satisfied the
+third constraint. Based on the order of lower 32 bits of left 6 quadwords:
+                              lower 32 bits     order
+	0x6032d0 <node1>:       0x0000014c      2
+	0x6032e0 <node2>:       0x000000a8      1(smallest)
+	0x6032f0 <node3>:       0x0000039c      6
+	0x603300 <node4>:       0x000002b3      5
+	0x603310 <node5>:       0x000001dd      4
+	0x603320 <node6>:       0x000001bb      3
+we have the following solution of the list structure at 0x6032d0:
+	0x6032d0 <node1>:       0x000000010000014c      0x6032e0
+	0x6032e0 <node2>:       0x00000002000000a8      0
+	0x6032f0 <node3>:       0x000000030000039c      0x603300
+	0x603300 <node4>:       0x00000004000002b3      0x603310
+	0x603310 <node5>:       0x00000005000001dd      0x603320
+	0x603320 <node6>:       0x00000006000001bb      0x6032d0
+
+	Thus, lpbuf[0] points to address 0x603320, lpbuf[1] points to address
+0x603310, and so on.
+
+	Moreover, we could think backward from step 5 to step 2, even to the
+input string before all the transformations in phase_6:
+	lpbuf[0] = 0x6032f0   ->   number1 = 3   ->   1st input number = 4
+	lpbuf[1] = 0x603300   ->   number2 = 4   ->   2nd input number = 3
+	lpbuf[2] = 0x603310   ->   number3 = 5   ->   3rd input number = 2
+	lpbuf[3] = 0x603320   ->   number4 = 6   ->   4th input number = 1
+	lpbuf[4] = 0x6032d0   ->   number5 = 1   ->   5th input number = 6
+	lpbuf[5] = 0x6032e0   ->   number6 = 2   ->   6th input number = 5
+
+	Therefore, the sixth string is "4 3 2 1 6 5". We could append it
+into strings.txt.
+
+
+7. The Secret Phase
+	The secret phase is hidden in function phase_defused:
+	Dump of assembler code for function phase_defused:
+	   0x00000000004015c4 <+0>:     sub    $0x78,%rsp
+	   0x00000000004015c8 <+4>:     mov    %fs:0x28,%rax
+	   0x00000000004015d1 <+13>:    mov    %rax,0x68(%rsp)
+	   0x00000000004015d6 <+18>:    xor    %eax,%eax
+	   0x00000000004015d8 <+20>:    cmpl   $0x6,0x202181(%rip) # 0x603760
+                                                                   # <num_input_strings>
+	   0x00000000004015df <+27>:    jne    0x40163f <phase_defused+123>
+	   0x00000000004015e1 <+29>:    lea    0x10(%rsp),%r8
+	   0x00000000004015e6 <+34>:    lea    0xc(%rsp),%rcx
+	   0x00000000004015eb <+39>:    lea    0x8(%rsp),%rdx
+	   0x00000000004015f0 <+44>:    mov    $0x402619,%esi
+	   0x00000000004015f5 <+49>:    mov    $0x603870,%edi
+	   0x00000000004015fa <+54>:    callq  0x400bf0 <__isoc99_sscanf@plt>
+	   0x00000000004015ff <+59>:    cmp    $0x3,%eax
+	   0x0000000000401602 <+62>:    jne    0x401635 <phase_defused+113>
+	   0x0000000000401604 <+64>:    mov    $0x402622,%esi
+	   0x0000000000401609 <+69>:    lea    0x10(%rsp),%rdi
+	   0x000000000040160e <+74>:    callq  0x401338 <strings_not_equal>
+	   0x0000000000401613 <+79>:    test   %eax,%eax
+	   0x0000000000401615 <+81>:    jne    0x401635 <phase_defused+113>
+	   0x0000000000401617 <+83>:    mov    $0x4024f8,%edi
+	   0x000000000040161c <+88>:    callq  0x400b10 <puts@plt>
+	   0x0000000000401621 <+93>:    mov    $0x402520,%edi
+	   0x0000000000401626 <+98>:    callq  0x400b10 <puts@plt>
+	   0x000000000040162b <+103>:   mov    $0x0,%eax
+	   0x0000000000401630 <+108>:   callq  0x401242 <secret_phase>
+	   0x0000000000401635 <+113>:   mov    $0x402558,%edi
+	   0x000000000040163a <+118>:   callq  0x400b10 <puts@plt>
+	   0x000000000040163f <+123>:   mov    0x68(%rsp),%rax
+	   0x0000000000401644 <+128>:   xor    %fs:0x28,%rax
+	   0x000000000040164d <+137>:   je     0x401654 <phase_defused+144>
+	   0x000000000040164f <+139>:   callq  0x400b30 <__stack_chk_fail@plt>
+	   0x0000000000401654 <+144>:   add    $0x78,%rsp
+	   0x0000000000401658 <+148>:   retq   
+	End of assembler dump.
+
+	If we do the following things:
+	(gdb) break phase_1
+	(gdb) break phase_2
+	(gdb) break phase_3
+	(gdb) run strings.txt
+	(gdb) print (int)num_input_strings #	on <phase_defused+20> cmpl is
+                                           # for long words
+	$1 = 1
+	(gdb) continue
+	(gdb) print (int)num_input_strings
+	$2 = 2
+	(gdb) continue
+	(gdb) print (int)num_input_strings
+	$3 = 3
+	(gdb) kill
+we'll know that num_input_strings represent the phase number. Therefore, phase_
+defused first checks which phase we are in, and returns silently if we are not
+in phase 6.
+
+	The next thing to check is whether the string at 0x603870 contains 2
+numbers and "DrEvil" or not, which is discovered by the following method:
+	(gdb) x/s 0x402619 # format string passed to sscanf on <phase_defused+44>
+	0x402619:       "%d %d %s"
+	(gdb) x/s 0x402622 #	preparing the 2nd argument before comparison of
+                           # string on <phase_defused+44>
+	0x402622:       "DrEvil"
+
+	If we passed the 2 tests described above, we could enter the secret
+phase implemented by funtion secret_phase. To pass the 2 tests, we need to
+execute the following commands:
+	(gdb) delete # delete all breakpoints we set before
+	(gdb) break phase_6 #	jump all function call to phase_defused except
+                            # the last one, and enter phase_6 to update num_
+                            # input_strings
+	(gdb) run strings.txt
+	(gdb) break phase_defused
+	(gdb) continue # we've entered the last function call of phase_defused
+	(gdb) set *(char *)0x603870 = '1' # pick any number you like
+	(gdb) set *(char *)0x603871 = ' '
+	(gdb) set *(char *)0x603872 = '2' # pick any number you like
+	(gdb) set *(char *)0x603873 = ' '
+	(gdb) set *(char *)0x603874 = 'D'
+	(gdb) set *(char *)0x603875 = 'r'
+	(gdb) set *(char *)0x603876 = 'E'
+	(gdb) set *(char *)0x603877 = 'v'
+	(gdb) set *(char *)0x603878 = 'i'
+	(gdb) set *(char *)0x603879 = 'l'
+	(gdb) set *(char *)0x60387a = 0 #	the terminating null byte of
+                                        # the string
+	(gdb) continue # now we enter the secret phase
+
+	To solve the secret phase, we should analyze function secret_phase:
+	Dump of assembler code for function secret_phase:
+	   0x0000000000401242 <+0>:     push   %rbx
+	   0x0000000000401243 <+1>:     callq  0x40149e <read_line>
+	   0x0000000000401248 <+6>:     mov    $0xa,%edx
+	   0x000000000040124d <+11>:    mov    $0x0,%esi
+	   0x0000000000401252 <+16>:    mov    %rax,%rdi
+	   0x0000000000401255 <+19>:    callq  0x400bd0 <strtol@plt>
+	   0x000000000040125a <+24>:    mov    %rax,%rbx
+	   0x000000000040125d <+27>:    lea    -0x1(%rax),%eax
+	   0x0000000000401260 <+30>:    cmp    $0x3e8,%eax
+	   0x0000000000401265 <+35>:    jbe    0x40126c <secret_phase+42>
+	   0x0000000000401267 <+37>:    callq  0x40143a <explode_bomb>
+	   0x000000000040126c <+42>:    mov    %ebx,%esi
+	   0x000000000040126e <+44>:    mov    $0x6030f0,%edi
+	   0x0000000000401273 <+49>:    callq  0x401204 <fun7>
+	   0x0000000000401278 <+54>:    cmp    $0x2,%eax
+	   0x000000000040127b <+57>:    je     0x401282 <secret_phase+64>
+	   0x000000000040127d <+59>:    callq  0x40143a <explode_bomb>
+	   0x0000000000401282 <+64>:    mov    $0x402438,%edi
+	   0x0000000000401287 <+69>:    callq  0x400b10 <puts@plt>
+	   0x000000000040128c <+74>:    callq  0x4015c4 <phase_defused>
+	   0x0000000000401291 <+79>:    pop    %rbx
+	   0x0000000000401292 <+80>:    retq   
+	End of assembler dump.
+
+	The function strtol from C standard library has the following proto-
+type:
+	long int strtol(const char *nptr, char **endptr, int base);
+The call to strtol on <secret_phase+19> converts the input string to an integer
+of type long.
+
+	Function secret_phase then checks if the integer after subtracted by 1
+is less than or equal to 0x3e8(1000 in decimal).
+
+	At the end, secret_phase calls function fun7 with arguments being an
+address 0x6030f0 and the original integer, and then checks if the latter one
+returns 2. Disassemble the fun7:
+	Dump of assembler code for function fun7:
+	   0x0000000000401204 <+0>:     sub    $0x8,%rsp
+	   0x0000000000401208 <+4>:     test   %rdi,%rdi
+	   0x000000000040120b <+7>:     je     0x401238 <fun7+52>
+	   0x000000000040120d <+9>:     mov    (%rdi),%edx
+	   0x000000000040120f <+11>:    cmp    %esi,%edx
+	   0x0000000000401211 <+13>:    jle    0x401220 <fun7+28>
+	   0x0000000000401213 <+15>:    mov    0x8(%rdi),%rdi
+	   0x0000000000401217 <+19>:    callq  0x401204 <fun7>
+	   0x000000000040121c <+24>:    add    %eax,%eax
+	   0x000000000040121e <+26>:    jmp    0x40123d <fun7+57>
+	   0x0000000000401220 <+28>:    mov    $0x0,%eax
+	   0x0000000000401225 <+33>:    cmp    %esi,%edx
+	   0x0000000000401227 <+35>:    je     0x40123d <fun7+57>
+	   0x0000000000401229 <+37>:    mov    0x10(%rdi),%rdi
+	   0x000000000040122d <+41>:    callq  0x401204 <fun7>
+	   0x0000000000401232 <+46>:    lea    0x1(%rax,%rax,1),%eax
+	   0x0000000000401236 <+50>:    jmp    0x40123d <fun7+57>
+	   0x0000000000401238 <+52>:    mov    $0xffffffff,%eax
+	   0x000000000040123d <+57>:    add    $0x8,%rsp
+	   0x0000000000401241 <+61>:    retq   
+	End of assembler dump.
+
+	Function fun7 can be translated into descriptions in the C programming
+language:
+	/*	The integer was truncated into int type before calling fun7 in
+	 * secret_phase. */
+	int fun7(int *p; int integer)
+	{
+		int number;
+		int ret;
+
+
+		if (p == NULL) {
+			return 0xffffffff;
+		} else {
+			number = *p;
+
+			if (number <= integer) {
+				if (number == integer)
+					return 0;
+
+				ret = fun7(*((int **)(p + 4)), integer);
+
+				return 2 * ret + 1;
+			} else {
+				ret = fun7(*((int **)(p + 2)), integer);
+
+				return 2 * ret;
+			}
+		}
+	}
+
+	Since we want fun7 to return 2, we could pick a integer that makes
+the first time of recursively calling fun7 falling into the case number >
+intger, then the second time of recursive calling falling into the case
+number < integer, finally the third time number = intger.
+
+	Actually, this strategy is based on the fact that 2 * 0 + 1 = 1
+and 2 * 1 = 1.
+
+	But we still need to gain more insights into function fun7, by using
+the following commands:
+	(gdb) x/wd 0x6030f0
+	0x6030f0 <n1>:  36
+
+	(gdb) x/gx 0x6030f0 + 8
+	0x6030f8 <n1+8>:        0x0000000000603110
+	(gdb) x/wd 0x603110
+	0x603110 <n21>: 8
+
+	(gdb) x/gx 0x603110 + 16
+	0x603120 <n21+16>:      0x0000000000603150
+	(gdb) x/wd 0x603150
+	0x603150 <n32>: 22
+
+	After applying our startegy with these new informations, we get 3
+contraints on integer:
+	1. 36 > integer
+	2. 8 < integer
+	3. 22 = integer
+
+	Therefore, the string for secret phase is "22".
+
+
+8. List of Answer Strings
+phase 1:	Border relations with Canada have never been better.
+phase 2:	1 2 4 8 16 32
+phase 3:	7 327
+phase 4:	7 0
+phase 5:	ionefg
+phase 6:	4 3 2 1 6 5
+secret phase:	22
