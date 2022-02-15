@@ -1,0 +1,203 @@
+# A homework problem solution for the CS:APP3e
+#
+# Copyright (C) 2022 Tongjie Liu <tongjieandliu@gmail.com>.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+#	After disassembling the executable object program by using objdump,
+# we get the following assembly language representation of function bubble
+# from Homework_4.47a.c:
+#	00000000000011a9 <bubble>:
+#	    11a9:       f3 0f 1e fa             endbr64 
+#	    11ad:       55                      push   %rbp
+#	    11ae:       48 89 e5                mov    %rsp,%rbp
+#	    11b1:       48 89 7d d8             mov    %rdi,-0x28(%rbp)
+#	    11b5:       48 89 75 d0             mov    %rsi,-0x30(%rbp)
+#	    11b9:       48 8b 45 d0             mov    -0x30(%rbp),%rax
+#	    11bd:       48 c1 e0 03             shl    $0x3,%rax
+#	    11c1:       48 8d 50 f8             lea    -0x8(%rax),%rdx
+#	    11c5:       48 8b 45 d8             mov    -0x28(%rbp),%rax
+#	    11c9:       48 01 d0                add    %rdx,%rax
+#	    11cc:       48 89 45 e8             mov    %rax,-0x18(%rbp)
+#	    11d0:       eb 5e                   jmp    1230 <bubble+0x87>
+#	    11d2:       48 8b 45 d8             mov    -0x28(%rbp),%rax
+#	    11d6:       48 89 45 f0             mov    %rax,-0x10(%rbp)
+#	    11da:       eb 45                   jmp    1221 <bubble+0x78>
+#	    11dc:       48 8b 45 f0             mov    -0x10(%rbp),%rax
+#	    11e0:       48 8b 10                mov    (%rax),%rdx
+#	    11e3:       48 8b 45 f0             mov    -0x10(%rbp),%rax
+#	    11e7:       48 83 c0 08             add    $0x8,%rax
+#	    11eb:       48 8b 00                mov    (%rax),%rax
+#	    11ee:       48 39 c2                cmp    %rax,%rdx
+#	    11f1:       7e 29                   jle    121c <bubble+0x73>
+#	    11f3:       48 8b 45 f0             mov    -0x10(%rbp),%rax
+#	    11f7:       48 8b 40 08             mov    0x8(%rax),%rax
+#	    11fb:       48 89 45 f8             mov    %rax,-0x8(%rbp)
+#	    11ff:       48 8b 45 f0             mov    -0x10(%rbp),%rax
+#	    1203:       48 8d 50 08             lea    0x8(%rax),%rdx
+#	    1207:       48 8b 45 f0             mov    -0x10(%rbp),%rax
+#	    120b:       48 8b 00                mov    (%rax),%rax
+#	    120e:       48 89 02                mov    %rax,(%rdx)
+#	    1211:       48 8b 45 f0             mov    -0x10(%rbp),%rax
+#	    1215:       48 8b 55 f8             mov    -0x8(%rbp),%rdx
+#	    1219:       48 89 10                mov    %rdx,(%rax)
+#	    121c:       48 83 45 f0 08          addq   $0x8,-0x10(%rbp)
+#	    1221:       48 8b 45 f0             mov    -0x10(%rbp),%rax
+#	    1225:       48 3b 45 e8             cmp    -0x18(%rbp),%rax
+#	    1229:       72 b1                   jb     11dc <bubble+0x33>
+#	    122b:       48 83 6d e8 08          subq   $0x8,-0x18(%rbp)
+#	    1230:       48 8b 45 e8             mov    -0x18(%rbp),%rax
+#	    1234:       48 3b 45 d8             cmp    -0x28(%rbp),%rax
+#	    1238:       77 98                   ja     11d2 <bubble+0x29>
+#	    123a:       90                      nop
+#	    123b:       90                      nop
+#	    123c:       5d                      pop    %rbp
+#	    123d:       c3                      retq
+	.pos 0
+	irmovq	stack, %rsp
+	
+	irmovq	array, %rdi
+	irmovq	$10, %rsi	
+	call	bubble
+
+	halt
+
+
+
+
+	.align 8
+array:	.quad 2
+	.quad 4
+	.quad 6
+	.quad 8
+	.quad 10
+	.quad 1
+	.quad 3
+	.quad 5
+	.quad 7
+	.quad 9
+
+
+
+
+#	yas program does not support negative hexadecimal displacements in
+# memory references
+bubble:	
+	rrmovq	%rsp, %rbp
+
+
+	rmmovq	%rdi, -40(%rbp)		# data
+	rmmovq	%rsi, -48(%rbp)		# count
+
+
+	# initialization of pos in the outer for loop
+	mrmovq	-48(%rbp), %rax
+
+	# %rax = %rax * 8
+	addq	%rax, %rax
+	addq	%rax, %rax
+	addq	%rax, %rax
+
+	rrmovq	%rax, %rdx
+	irmovq	$8, %rax
+	subq	%rax, %rdx		# (count - 1) * 8
+
+	mrmovq	-40(%rbp), %rax		# data
+	addq	%rdx, %rax		# pos = data + (count - 1)
+	rmmovq	%rax, -24(%rbp)		# store pos on stack
+	jmp	outer_for_loop_test
+
+
+outer_for_loop_body:
+	# initialization of p in the inner for loop
+	mrmovq	-40(%rbp), %rax		# p = data
+	rmmovq	%rax, -16(%rbp)	# store p on stack
+	jmp	inner_for_loop_test
+
+
+# body of the inner for loop starts
+compare_2_elements:
+	mrmovq	-16(%rbp), %rax
+	mrmovq	(%rax), %rdx
+
+	mrmovq	-16(%rbp), %rax
+	irmovq	$0x8, %rcx
+	addq	%rcx, %rax
+	mrmovq	(%rax), %rax
+
+	subq	%rax, %rdx		# cmp
+	jle	inner_for_loop_update
+
+
+swap_2_elements:
+	mrmovq	-16(%rbp), %rax
+	mrmovq	0x8(%rax), %rax
+
+	rmmovq	%rax, -8(%rbp)		# tmp = *(p + 1)
+
+	mrmovq	-16(%rbp), %rax
+	irmovq	$0x8, %rdx
+	addq	%rax, %rdx		# p + 1
+
+	mrmovq	-16(%rbp), %rax
+	mrmovq	(%rax), %rax
+	rmmovq	%rax, (%rdx)		# *(p + 1) = *p
+
+	mrmovq	-16(%rbp), %rax
+	mrmovq	-8(%rbp), %rdx
+	rmmovq	%rdx, (%rax)		# *p = tmp
+# body of the inner for loop ends
+
+
+inner_for_loop_update:
+	irmovq	$0x8, %rax
+	mrmovq	-16(%rbp), %rcx
+
+	addq	%rax, %rcx
+
+	rmmovq	%rcx, -16(%rbp)
+
+
+inner_for_loop_test:
+	mrmovq	-16(%rbp), %rax
+
+	mrmovq	-24(%rbp), %rcx
+	subq	%rcx, %rax		# cmp
+	jl	compare_2_elements
+
+
+outer_for_loop_update:
+	irmovq	$0x8, %rax
+	mrmovq	 -24(%rbp), %rcx
+
+	subq	%rax, %rcx
+
+	rmmovq	%rcx, -24(%rsp)
+
+
+outer_for_loop_test:
+	mrmovq	-24(%rbp), %rax
+
+	mrmovq	-40(%rbp), %rcx
+	subq	%rcx, %rax		# cmp
+	jg	outer_for_loop_body
+
+
+	ret
+
+
+
+
+	.pos 0x500
+stack:
