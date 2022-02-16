@@ -1,0 +1,189 @@
+# A homework problem solution for the CS:APP3e
+#
+# Copyright (C) 2022 Tongjie Liu <tongjieandliu@gmail.com>.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+	.pos 0
+	irmovq	stack, %rsp
+	
+	irmovq	array, %rdi
+	irmovq	$10, %rsi	
+	call	bubble
+
+	halt
+
+
+
+
+	.align 8
+array:	.quad 2
+	.quad 4
+	.quad 6
+	.quad 8
+	.quad 10
+	.quad 1
+	.quad 3
+	.quad 5
+	.quad 7
+	.quad 9
+
+
+
+
+#	yas program does not support negative hexadecimal displacements in
+# memory references
+bubble:	
+	rrmovq	%rsp, %rbp
+
+
+	rmmovq	%rdi, -40(%rbp)		# data
+	rmmovq	%rsi, -48(%rbp)		# count
+
+
+	# initialization of pos in the outer for loop
+	mrmovq	-48(%rbp), %rax
+
+	# %rax = %rax * 8
+	addq	%rax, %rax
+	addq	%rax, %rax
+	addq	%rax, %rax
+
+	rrmovq	%rax, %rdx
+	irmovq	$8, %rax
+	subq	%rax, %rdx		# (count - 1) * 8
+
+	mrmovq	-40(%rbp), %rax		# data
+	addq	%rdx, %rax		# pos = data + (count - 1)
+	rmmovq	%rax, -24(%rbp)		# store pos on stack
+	jmp	outer_for_loop_test
+
+
+outer_for_loop_body:
+	# initialization of p in the inner for loop
+	mrmovq	-40(%rbp), %rax		# p = data
+	rmmovq	%rax, -16(%rbp)	# store p on stack
+	jmp	inner_for_loop_test
+
+
+compare_2_elements:
+	mrmovq	-16(%rbp), %rax
+	mrmovq	(%rax), %rdx
+
+
+	mrmovq	-16(%rbp), %rax
+	irmovq	$0x8, %rcx
+	addq	%rcx, %rax
+	mrmovq	(%rax), %rax
+
+
+	#	Create copies of %rax and %rdx for later evaluations of the
+	# condition in if statement on line 6 of the bubble_a function in
+	# Homework Problem 4.47.
+	rrmovq	%rax, %r8		# *(p + 1)
+	rrmovq	%rdx, %r9		# *p
+
+
+
+
+#########################################################
+##### modifications for Homework Problem 4.49 start #####
+#########################################################
+swap_2_elements:
+#	Actually, we know about 2 groups of fact:
+#	Group 1:
+#		*p + delta = *(p + 1)
+#		*p + 0 = *p
+#	Group 2:
+#		*(p + 1) - delta = *p
+#		*(p + 1) - 0 = *(p + 1)
+# Here, delta = *(p + 1) - *p. Combine these 2 groups, we can get the follwing
+# solution to Homework Problem 4.49 in C:
+# 	long delta, var;
+#
+# 	delta = *(p + 1) - *p;
+#
+# 	if (*p > *(p + 1))
+# 		var = delta;
+# 	else
+# 		var = 0;
+#
+#	*p = *p + var;
+#	*(p + 1)  = *(p + 1) - var;
+# The only thing left is to translate this to assembly language, and here is the
+# final answer:
+	subq	%rdx, %rax		# delta
+
+	irmovq	$0, %rcx		# var = 0
+	subq	%r8, %r9		# if (*p > *(p + 1))
+	cmovg	%rax, %rcx		#	var = delta
+	addq	%r8, %r9		# restore %r9 after the subtraction
+
+	addq	%rcx, %r9		# *p + var
+	subq	%rcx, %r8		# *(p + 1) - var
+
+	mrmovq	-16(%rbp), %rax		# p
+	rmmovq	%r9, (%rax)		# *p = *p + var
+
+	irmovq	$8, %rcx
+	addq	%rcx, %rax		# p + 1
+	rmmovq	%r8, (%rax)		# *(p + 1) = *(p + 1) - var
+#########################################################
+###### modifications for Homework Problem 4.49 end ######
+#########################################################
+
+
+
+
+inner_for_loop_update:
+	irmovq	$0x8, %rax
+	mrmovq	-16(%rbp), %rcx
+
+	addq	%rax, %rcx
+
+	rmmovq	%rcx, -16(%rbp)
+
+
+inner_for_loop_test:
+	mrmovq	-16(%rbp), %rax
+
+	mrmovq	-24(%rbp), %rcx
+	subq	%rcx, %rax		# cmp
+	jl	compare_2_elements
+
+
+outer_for_loop_update:
+	irmovq	$0x8, %rax
+	mrmovq	 -24(%rbp), %rcx
+
+	subq	%rax, %rcx
+
+	rmmovq	%rcx, -24(%rsp)
+
+
+outer_for_loop_test:
+	mrmovq	-24(%rbp), %rax
+
+	mrmovq	-40(%rbp), %rcx
+	subq	%rcx, %rax		# cmp
+	jg	outer_for_loop_body
+
+
+	ret
+
+
+
+
+	.pos 0x500
+stack:
