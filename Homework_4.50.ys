@@ -1,0 +1,128 @@
+# A homework problem solution for the CS:APP3e
+#
+# Copyright (C) 2022 Tongjie Liu <tongjieandliu@gmail.com>.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+	.pos 0
+	irmovq	stack, %rsp
+
+
+	irmovq	$7, %r8
+
+	# initialize counter
+	irmovq	$-1, %rdi
+	jmp	for_loop_test
+
+for_loop_body:
+	call	switchv
+
+	# %rdi++
+	irmovq	$1, %rdx
+	addq	%rdx, %rdi
+
+	# %rdi * 8
+	rrmovq	%rdi, %rdx
+	addq	%rdx, %rdx
+	addq	%rdx, %rdx
+	addq	%rdx, %rdx
+
+	irmovq	vals, %rcx
+	addq	%rcx, %rdx	# vals + %rdi * 8
+	rmmovq	%rax, (%rdx)
+
+for_loop_test:
+	rrmovq	%rdi, %rdx	# make a copy of %rdi for subtraction below
+	subq	%r8, %rdx
+	jl	for_loop_body
+
+
+	halt
+
+
+
+
+	.align 8
+jump_table:
+	.quad case_0
+	.quad case_default
+	.quad case_2_and_5
+	.quad case_3
+	.quad case_default
+	.quad case_2_and_5
+
+
+vals:
+	.quad 0
+	.quad 0
+	.quad 0
+	.quad 0
+	.quad 0
+	.quad 0
+	.quad 0
+	.quad 0
+
+
+
+
+# idx: #rdi
+switchv:
+	# idx < 0
+	irmovq	$0, %rax
+	subq	%rax, %rdi	# idx - 0 = idx, no backup is needed
+	jl	case_default
+
+	# idx > 5
+	irmovq	$5, %rax
+	rrmovq	%rdi, %rdx	# make a copy of idx for subtraction below
+	subq	%rax, %rdx
+	jg	case_default
+
+	# idx * 8
+	rrmovq	%rdi, %rax
+	addq	%rax, %rax
+	addq	%rax, %rax
+	addq	%rax, %rax
+
+	irmovq	jump_table, %rdx
+	addq	%rdx, %rax	# jump_table + 8 * idx
+	mrmovq	(%rax), %rax	# address of a case handler in jump table
+	pushq	%rax
+	ret			# jump to the address obtained above
+
+
+case_default:
+	irmovq	$0xddd, %rax
+	ret
+
+
+case_0:
+	irmovq	$0xaaa, %rax
+	ret
+
+
+case_2_and_5:
+	irmovq	$0xbbb, %rax
+	ret
+
+
+case_3:
+	irmovq	$0xccc, %rax
+	ret
+
+
+
+
+	.pos 0x500
+stack:
