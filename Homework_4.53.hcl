@@ -450,45 +450,34 @@ bool F_stall =
 	IRET in { D_icode, E_icode, M_icode } ||
 	# 	A data hazard.
 	#
-	#	Unfortunately, the solution in the comment above does
-	# not work, since all these signals are 0 when the processor
-	# starts, and a false data hazard is always detected, which
-	# makes the processor stalling forever.
+	#	Unfortunately, the solution in the comment above does not work.
+	# 
+	#	If we take a look at the output of standard psim with verbosity
+	# level of 2, we could discover that the processor use nop instruction
+	# to fill up stages that are empty when it starts. Obviously, nop is a
+	# instruction that does not read or write any registers. Thus, all these
+	# signals are initialized to RNONE when the processor starts, and false
+	# data hazards are always detected by the pipeline control logic, which
+	# makes the processor stalling forever(fetch pipeline register stalls,
+	# and decode pipeline register stalls too).
 	#
-	# 	When the processor starts, E_icode = M_icode = W_icode
-	# = INOP, which is discovered by running psim simulator with
-	# a verbosity level of 2. And the nop instruction does not write
-	# register file even when the pipeline is fully filled with
-	# "real instructions" from the instruction memory.
+	# 	Moreover, there are other false data hazards may be detected.
+	# Since an instruction that doesn't read at least one register in the
+	# decode stage has at least one RNONE in d_srcA or d_srcB, and in later
+	# stages there may be at least one insturction that doesn't write at
+	# least one register has at least one RNONE in e_dstE, E_dstM, M_dstE,
+	# M_dstM, W_dstE or W_dstM. This can happen at any time, not only when
+	# the processor starts.
 	#
-	# 	Another modification is needed when a false data hazard
-	# is detected, which is triggered by an RNONE in e_dstE, E_dstM,
-	# M_dstE, M_dstM, W_dstE, or W_dstM. If we don't try to make this
-	# modification, the processor is very slow.
+	# 	In spite of that, a simple modification is enough. The reason
+	# behind this is that the first case is a part of the second.
 	(
-		(e_dstE in {d_srcA, d_srcB}	&&
-			E_icode != INOP		&&
-			e_dstE != RNONE)
-		||
-		(E_dstM in {d_srcA, d_srcB}	&&
-			E_icode != INOP		&&
-			E_dstM != RNONE)
-		||
-		(M_dstE in {d_srcA, d_srcB}	&&
-			M_icode != INOP		&&
-			M_dstE != RNONE)
-		||
-		(M_dstM in {d_srcA, d_srcB}	&&
-			M_icode != INOP		&&
-			M_dstM != RNONE)
-		||
-		(W_dstE in {d_srcA, d_srcB}	&&
-			W_icode != INOP		&&
-			W_dstE != RNONE)
-		||
-		(W_dstM in {d_srcA, d_srcB}	&&
-			W_icode != INOP		&&
-			W_dstM != RNONE)
+		(e_dstE in {d_srcA, d_srcB} && e_dstE != RNONE) ||
+		(E_dstM in {d_srcA, d_srcB} && E_dstM != RNONE) ||
+		(M_dstE in {d_srcA, d_srcB} && M_dstE != RNONE) ||
+		(M_dstM in {d_srcA, d_srcB} && M_dstM != RNONE) ||
+		(W_dstE in {d_srcA, d_srcB} && W_dstE != RNONE) ||
+		(W_dstM in {d_srcA, d_srcB} && W_dstM != RNONE)
 	);
 
 
@@ -496,31 +485,14 @@ bool F_stall =
 
 # data hazard but no mispredicted branch
 bool D_stall = 
-	# A data hazard. We make the same modifications.
+	# A data hazard. We make the same modification.
 	(
-		(e_dstE in {d_srcA, d_srcB}	&&
-			E_icode != INOP		&&
-			e_dstE != RNONE)
-		||
-		(E_dstM in {d_srcA, d_srcB}	&&
-			E_icode != INOP		&&
-			E_dstM != RNONE)
-		||
-		(M_dstE in {d_srcA, d_srcB}	&&
-			M_icode != INOP		&&
-			M_dstE != RNONE)
-		||
-		(M_dstM in {d_srcA, d_srcB}	&&
-			M_icode != INOP		&&
-			M_dstM != RNONE)
-		||
-		(W_dstE in {d_srcA, d_srcB}	&&
-			W_icode != INOP		&&
-			W_dstE != RNONE)
-		||
-		(W_dstM in {d_srcA, d_srcB}	&&
-			W_icode != INOP		&&
-			W_dstM != RNONE)
+		(e_dstE in {d_srcA, d_srcB} && e_dstE != RNONE) ||
+		(E_dstM in {d_srcA, d_srcB} && E_dstM != RNONE) ||
+		(M_dstE in {d_srcA, d_srcB} && M_dstE != RNONE) ||
+		(M_dstM in {d_srcA, d_srcB} && M_dstM != RNONE) ||
+		(W_dstE in {d_srcA, d_srcB} && W_dstE != RNONE) ||
+		(W_dstM in {d_srcA, d_srcB} && W_dstM != RNONE)
 	) &&
 	# always cancel mispredicted instructions
 	!(E_icode == IJXX && !e_Cnd);
@@ -532,31 +504,14 @@ bool D_bubble =
 	# processing ret but no data hazard
 	(
 		IRET in { D_icode, E_icode, M_icode } &&
-		# A data hazard. We make the same modifications.
+		# A data hazard. We make the same modification.
 		!(
-			(e_dstE in {d_srcA, d_srcB}	&&
-				E_icode != INOP		&&
-				e_dstE != RNONE)
-			||
-			(E_dstM in {d_srcA, d_srcB}	&&
-				E_icode != INOP		&&
-				E_dstM != RNONE)
-			||
-			(M_dstE in {d_srcA, d_srcB}	&&
-				M_icode != INOP		&&
-				M_dstE != RNONE)
-			||
-			(M_dstM in {d_srcA, d_srcB}	&&
-				M_icode != INOP		&&
-				M_dstM != RNONE)
-			||
-			(W_dstE in {d_srcA, d_srcB}	&&
-				W_icode != INOP		&&
-				W_dstE != RNONE)
-			||
-			(W_dstM in {d_srcA, d_srcB}	&&
-				W_icode != INOP		&&
-				W_dstM != RNONE)
+			(e_dstE in {d_srcA, d_srcB} && e_dstE != RNONE) ||
+			(E_dstM in {d_srcA, d_srcB} && E_dstM != RNONE) ||
+			(M_dstE in {d_srcA, d_srcB} && M_dstE != RNONE) ||
+			(M_dstM in {d_srcA, d_srcB} && M_dstM != RNONE) ||
+			(W_dstE in {d_srcA, d_srcB} && W_dstE != RNONE) ||
+			(W_dstM in {d_srcA, d_srcB} && W_dstM != RNONE)
 		)
 	);
 
@@ -569,31 +524,14 @@ bool E_stall = 0;
 bool E_bubble =
 	# mispredicted branch
 	(E_icode == IJXX && !e_Cnd) ||
-	# A data hazard. We make the same modifications.
+	# A data hazard. We make the same modification.
 	(
-		(e_dstE in {d_srcA, d_srcB}	&&
-			E_icode != INOP		&&
-			e_dstE != RNONE)
-		||
-		(E_dstM in {d_srcA, d_srcB}	&&
-			E_icode != INOP		&&
-			E_dstM != RNONE)
-		||
-		(M_dstE in {d_srcA, d_srcB}	&&
-			M_icode != INOP		&&
-			M_dstE != RNONE)
-		||
-		(M_dstM in {d_srcA, d_srcB}	&&
-			M_icode != INOP		&&
-			M_dstM != RNONE)
-		||
-		(W_dstE in {d_srcA, d_srcB}	&&
-			W_icode != INOP		&&
-			W_dstE != RNONE)
-		||
-		(W_dstM in {d_srcA, d_srcB}	&&
-			W_icode != INOP		&&
-			W_dstM != RNONE)
+		(e_dstE in {d_srcA, d_srcB} && e_dstE != RNONE) ||
+		(E_dstM in {d_srcA, d_srcB} && E_dstM != RNONE) ||
+		(M_dstE in {d_srcA, d_srcB} && M_dstE != RNONE) ||
+		(M_dstM in {d_srcA, d_srcB} && M_dstM != RNONE) ||
+		(W_dstE in {d_srcA, d_srcB} && W_dstE != RNONE) ||
+		(W_dstM in {d_srcA, d_srcB} && W_dstM != RNONE)
 	);
 #####################################################################
 #           modifications for Homework Problem 4.53 end             #
