@@ -1,0 +1,56 @@
+# A homework problem solution for the CS:APP3e
+#
+# Copyright (C) 2022 Tongjie Liu <tongjieandliu@gmail.com>.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+	To measure the performance of three version of bubble sort assembly
+language program, we only have to run the following commands:
+	$ tar xf sim.tar
+	$ cd sim
+
+	# comment out all 3 variables for GUI in the Makefile. #
+	$ make clean
+	$ make
+
+	$ cd pipe
+	# comment out all 3 variables for GUI in the Makefile. #
+	$ make clean
+	$ make psim # PIPE from the book
+
+	$ cd ../y86-code
+	# copy Homework_4.47b.ys, Homework_4.48.ys, and Homework_4.49.ys here #
+	$ make clean
+	$ make Homework_4.47b.yo
+	$ make Homework_4.48.yo
+	$ make Homework_4.49.yo
+
+	$ ../pipe/psim -v0 Homework_4.47b.yo
+	CPI: 1406 cycles/1059 instructions = 1.33
+
+	$ ../pipe/psim -v0 Homework_4.48.yo
+	CPI: 2111 cycles/1734 instructions = 1.22
+
+	$ ../pipe/psim -v0 Homework_4.49.yo
+	CPI: 1706 cycles/1419 instructions = 1.20
+
+	Clearly, 4.49 > 4.48 > 4.47 in terms of performance.
+
+	First of all, conditional transfer of control is much slower than condi-
+tional transfer of data, since the former is implemented in pipeline processors
+with many bubbles due to mispredicted branch.
+
+	Secondly, the difference between 4.49 and 4.48 in performance is more
+about the specific algorithms, since both of them use conditional transfer of
+data method.
