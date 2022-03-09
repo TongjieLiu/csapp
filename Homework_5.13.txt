@@ -1,0 +1,100 @@
+# A homework problem solution for the CS:APP3e
+#
+# Copyright (C) 2022 Tongjie Liu <tongjieandliu@gmail.com>.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+A.
+%xmm0  %xmm1  %rbp  %rax  %rcx  %rbx
+  |             |    |      |    |
+  |             *----*------*----*---->
+  |                  |      *----*---->
+  |      *-----------*------*----*---*- load    vmovsd 0(%rbp, %rcx, 8), %xmm1
+  |      |           |      |    |  /
+  |      |           |      *----*-/-->	load -* vmulsd (%rax, %rcx, 8), %xmm1, %xmm1
+  |      |           *------*-----*--->        \
+  |      |                  |	 | \            *
+  |      |                  |	 |  \          /
+  |      *------------------*----*---*->mul <-*
+  |      |                  |    |   *-
+  |      |                  |    |  /
+  |      |                  |    | *
+  |      |                  |    |  \
+  |      |                  |    |   ->
+  *------*------------------*----*----> add     vaddsd %xmm1, %xmm0, %xmm0
+  *------*------------------*----*-----
+  |      |                  |    |
+  |      |                  |    |
+  |      |                  *----*----> add     addq $1, %rcx
+  |      |                  *----*-----
+  |      |                  |    |
+  |      |                  |    |
+  |      |                  |    *---->
+  |      |                  *---------> cmp -*  cmpq %rbx, %rcx
+  |      |                  |                 \
+  |      |                  |                  *
+  |      |                  |                 /
+  |      |                  |           jne<-*  jne .L15
+  |      |                  |
+  |      |                  |
+ \/     \/                 \/
+%xmm0  %xmm1  %rbp  %rax  %rcx  %rbx
+
+
+
+
+%xmm0    %rbp    %rax    %rcx    %rcx
+  |        |       |       |       |
+  |        |       |       |       |
+  |        |       *---*---|       |
+  |        |           |   |       |
+  |        |          \/   |       |
+  |        |         load  |       |
+  |        |           |   |       |
+  |        *-------*---*---*       |
+  |                |   |           |
+  |                |   |           |
+  |               load |           |
+  |                |   |           |
+  |                *-*-*           |
+  |                  |             |
+  |                 \/             |
+  |                 mul            |
+  |                  |             |
+  *------------------*             |
+  |                                |
+ add                              add
+  |                                |
+  |                                |
+ \/                               \/
+%xmm0                            %rcx
+
+
+
+
+B. 3
+
+
+
+
+C. 1
+
+
+
+
+D.	There are 2 critical paths, one for %rcx, and another for %xmm0. The
+first one needs at least 1 cycle, and the second one needs at least 3 cycles.
+Then the inner loop has CPE of 3. And there is no multiplication of floating-
+point numbers in the critical paths, hence no multiplication has effect on
+the CPE.
